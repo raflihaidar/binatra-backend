@@ -16,6 +16,14 @@ class DeviceService {
             throw error;
         }
     }
+
+    async findByCode(data){
+        try {
+            return await deviceRepository.findByCode(data)
+        } catch (error) {
+            throw error
+        }
+    }
 }
 
 export const deviceService = new DeviceService();

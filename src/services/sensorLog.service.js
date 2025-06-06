@@ -5,7 +5,7 @@ class SensorLogService {
   async createSensorLog(data) {
     try {
       // Validasi input
-      if (!data.deviceId) {
+      if (!data.deviceCode) {
         throw new Error('Device ID is required');
       }
 
@@ -16,13 +16,13 @@ class SensorLogService {
 
       // Prepare data
       const sensorData = {
-        deviceId: data.deviceId,
+        deviceCode: data.deviceCode,
         rainfall: data.rainfall !== undefined ? parseFloat(data.rainfall) : null,
         waterLevel: data.waterLevel !== undefined ? parseFloat(data.waterLevel) : null,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
       };
 
-      logger.info(`Creating sensor log for device ${data.deviceId}`, sensorData);
+      logger.info(`Creating sensor log for device ${data.deviceCode}`, sensorData);
       return await sensorLogRepository.create(sensorData);
     } catch (error) {
       logger.error('Error creating sensor log:', error);
@@ -38,12 +38,12 @@ class SensorLogService {
 
       // Validasi dan prepare data
       const sensorLogsData = logsData.map(log => {
-        if (!log.deviceId) {
+        if (!log.deviceCode) {
           throw new Error('Device ID is required for all logs');
         }
 
         return {
-          deviceId: log.deviceId,
+          deviceCode: log.deviceCode,
           rainfall: log.rainfall !== undefined ? parseFloat(log.rainfall) : null,
           waterLevel: log.waterLevel !== undefined ? parseFloat(log.waterLevel) : null,
           timestamp: log.timestamp ? new Date(log.timestamp) : new Date()
@@ -58,37 +58,37 @@ class SensorLogService {
     }
   }
 
-  async getSensorLogsByDevice(deviceId) {
+  async getSensorLogsByDevice(deviceCode) {
     try {
-      if (!deviceId) {
+      if (!deviceCode) {
         throw new Error('Device ID is required');
       }
 
-      logger.info(`Getting sensor logs for device ${deviceId}`);
-      return await sensorLogRepository.findByDeviceId(deviceId);
+      logger.info(`Getting sensor logs for device ${deviceCode}`);
+      return await sensorLogRepository.findBydeviceCode(deviceCode);
     } catch (error) {
-      logger.error(`Error getting sensor logs for device ${deviceId}:`, error);
+      logger.error(`Error getting sensor logs for device ${deviceCode}:`, error);
       throw error;
     }
   }
 
-  async getLatestSensorLogs(deviceId, limit = 10) {
+  async getLatestSensorLogs(deviceCode, limit = 10) {
     try {
-      if (!deviceId) {
+      if (!deviceCode) {
         throw new Error('Device ID is required');
       }
 
-      logger.info(`Getting latest ${limit} sensor logs for device ${deviceId}`);
-      return await sensorLogRepository.findLatestByDeviceId(deviceId, parseInt(limit));
+      logger.info(`Getting latest ${limit} sensor logs for device ${deviceCode}`);
+      return await sensorLogRepository.findLatestBydeviceCode(deviceCode, parseInt(limit));
     } catch (error) {
-      logger.error(`Error getting latest sensor logs for device ${deviceId}:`, error);
+      logger.error(`Error getting latest sensor logs for device ${deviceCode}:`, error);
       throw error;
     }
   }
 
-  async getSensorLogsByDateRange(deviceId, startDate, endDate) {
+  async getSensorLogsByDateRange(deviceCode, startDate, endDate) {
     try {
-      if (!deviceId || !startDate || !endDate) {
+      if (!deviceCode || !startDate || !endDate) {
         throw new Error('Device ID, start date, and end date are required');
       }
 
@@ -99,17 +99,17 @@ class SensorLogService {
         throw new Error('Start date cannot be later than end date');
       }
 
-      logger.info(`Getting sensor logs for device ${deviceId} from ${startDate} to ${endDate}`);
-      return await sensorLogRepository.findByDateRange(deviceId, start, end);
+      logger.info(`Getting sensor logs for device ${deviceCode} from ${startDate} to ${endDate}`);
+      return await sensorLogRepository.findByDateRange(deviceCode, start, end);
     } catch (error) {
-      logger.error(`Error getting sensor logs by date range for device ${deviceId}:`, error);
+      logger.error(`Error getting sensor logs by date range for device ${deviceCode}:`, error);
       throw error;
     }
   }
 
-  async getSensorLogStatistics(deviceId, startDate, endDate) {
+  async getSensorLogStatistics(deviceCode, startDate, endDate) {
     try {
-      if (!deviceId || !startDate || !endDate) {
+      if (!deviceCode || !startDate || !endDate) {
         throw new Error('Device ID, start date, and end date are required');
       }
 
@@ -120,75 +120,75 @@ class SensorLogService {
         throw new Error('Start date cannot be later than end date');
       }
 
-      logger.info(`Getting statistics for device ${deviceId} from ${startDate} to ${endDate}`);
-      return await sensorLogRepository.getStatistics(deviceId, start, end);
+      logger.info(`Getting statistics for device ${deviceCode} from ${startDate} to ${endDate}`);
+      return await sensorLogRepository.getStatistics(deviceCode, start, end);
     } catch (error) {
-      logger.error(`Error getting statistics for device ${deviceId}:`, error);
+      logger.error(`Error getting statistics for device ${deviceCode}:`, error);
       throw error;
     }
   }
 
-  async getHourlyAverage(deviceId, date) {
+  async getHourlyAverage(deviceCode, date) {
     try {
-      if (!deviceId || !date) {
+      if (!deviceCode || !date) {
         throw new Error('Device ID and date are required');
       }
 
       const targetDate = new Date(date);
-      logger.info(`Getting hourly average for device ${deviceId} on ${date}`);
-      return await sensorLogRepository.getHourlyAverage(deviceId, targetDate);
+      logger.info(`Getting hourly average for device ${deviceCode} on ${date}`);
+      return await sensorLogRepository.getHourlyAverage(deviceCode, targetDate);
     } catch (error) {
-      logger.error(`Error getting hourly average for device ${deviceId}:`, error);
+      logger.error(`Error getting hourly average for device ${deviceCode}:`, error);
       throw error;
     }
   }
 
-  async getDailyAverage(deviceId, month, year) {
+  async getDailyAverage(deviceCode, month, year) {
     try {
-      if (!deviceId || !month || !year) {
+      if (!deviceCode || !month || !year) {
         throw new Error('Device ID, month, and year are required');
       }
 
-      logger.info(`Getting daily average for device ${deviceId} in ${month}/${year}`);
-      return await sensorLogRepository.getDailyAverage(deviceId, parseInt(month), parseInt(year));
+      logger.info(`Getting daily average for device ${deviceCode} in ${month}/${year}`);
+      return await sensorLogRepository.getDailyAverage(deviceCode, parseInt(month), parseInt(year));
     } catch (error) {
-      logger.error(`Error getting daily average for device ${deviceId}:`, error);
+      logger.error(`Error getting daily average for device ${deviceCode}:`, error);
       throw error;
     }
   }
 
-  async getHighRainfallAlerts(threshold = 5.0, deviceId = null) {
+  async getHighRainfallAlerts(threshold = 5.0, deviceCode = null) {
     try {
       const thresholdValue = parseFloat(threshold);
-      logger.info(`Getting high rainfall alerts with threshold ${thresholdValue}`, { deviceId });
-      return await sensorLogRepository.findHighRainfall(thresholdValue, deviceId);
+      logger.info(`Getting high rainfall alerts with threshold ${thresholdValue}`, { deviceCode });
+      return await sensorLogRepository.findHighRainfall(thresholdValue, deviceCode);
     } catch (error) {
       logger.error('Error getting high rainfall alerts:', error);
       throw error;
     }
   }
 
-  async getHighWaterLevelAlerts(threshold = 90.0, deviceId = null) {
+  async getHighWaterLevelAlerts(threshold = 90.0, deviceCode = null) {
     try {
       const thresholdValue = parseFloat(threshold);
-      logger.info(`Getting high water level alerts with threshold ${thresholdValue}`, { deviceId });
-      return await sensorLogRepository.findHighWaterLevel(thresholdValue, deviceId);
+      logger.info(`Getting high water level alerts with threshold ${thresholdValue}`, { deviceCode });
+      return await sensorLogRepository.findHighWaterLevel(thresholdValue, deviceCode);
     } catch (error) {
       logger.error('Error getting high water level alerts:', error);
       throw error;
     }
   }
 
-  async getLatestReading(deviceId) {
+  async getLatestReading(deviceCode) {
     try {
-      if (!deviceId) {
+      if (!deviceCode) {
         throw new Error('Device ID is required');
       }
 
-      logger.info(`Getting latest reading for device ${deviceId}`);
-      return await sensorLogRepository.getLatestReading(deviceId);
+      logger.info(`Getting latest reading for device ${deviceCode}`);
+      return await sensorLogRepository.getLatestReading(deviceCode);
     } catch (error) {
-      logger.error(`Error getting latest reading for device ${deviceId}:`, error);
+      logger.error(`Error getting latest reading for device ${deviceCode}:`, error);
       throw error;
     }
   }
@@ -236,24 +236,24 @@ class SensorLogService {
     }
   }
 
-  async deleteSensorLogsByDevice(deviceId) {
+  async deleteSensorLogsByDevice(deviceCode) {
     try {
-      if (!deviceId) {
+      if (!deviceCode) {
         throw new Error('Device ID is required');
       }
 
-      logger.info(`Deleting all sensor logs for device ${deviceId}`);
-      return await sensorLogRepository.deleteByDeviceId(deviceId);
+      logger.info(`Deleting all sensor logs for device ${deviceCode}`);
+      return await sensorLogRepository.deleteBydeviceCode(deviceCode);
     } catch (error) {
-      logger.error(`Error deleting sensor logs for device ${deviceId}:`, error);
+      logger.error(`Error deleting sensor logs for device ${deviceCode}:`, error);
       throw error;
     }
   }
 
-  async getSensorLogCount(deviceId = null) {
+  async getSensorLogCount(deviceCode = null) {
     try {
-      logger.info('Getting sensor log count', { deviceId });
-      return await sensorLogRepository.getCount(deviceId);
+      logger.info('Getting sensor log count', { deviceCode });
+      return await sensorLogRepository.getCount(deviceCode);
     } catch (error) {
       logger.error('Error getting sensor log count:', error);
       throw error;

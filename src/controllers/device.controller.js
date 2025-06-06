@@ -22,13 +22,13 @@ class DeviceController {
 
   createDevice = async (req, res) => {
     try {
-      const { userId, name, location } = req.body;
+      const { code, location, description } = req.body;
   
-      if (!userId || !name) {
-        return res.status(400).json({ message: 'userId and name are required' });
+      if (!code) {
+        return res.status(400).json({ message: 'code are required' });
       }
   
-      const device = await deviceService.createDevice({ userId, name, location });
+      const device = await deviceService.createDevice({ code, location, description });
   
       res.status(201).json({
         message: 'Device created successfully',
@@ -36,6 +36,26 @@ class DeviceController {
       });
     } catch (error) {
       res.status(500).json({ message: 'Failed to create device', error: error.message });
+    }
+  };
+
+  findDeviceByCode = async (req, res) => {
+    try {
+      const { code } = req.params;
+      
+  
+      if (!code) {
+        return res.status(400).json({ message: 'code are required' });
+      }
+  
+      const device = await deviceService.findByCode(code );
+  
+      res.status(201).json({
+        message: 'Device Founded',
+        data: device
+      });
+    } catch (error) {
+      res.status(500).json({ message: 'Failed to find device', error: error.message });
     }
   };
 }

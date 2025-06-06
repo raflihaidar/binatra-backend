@@ -4,7 +4,7 @@ class SensorLogRepository {
   async create(data) {
     return await prisma.sensorLog.create({
       data: {
-        deviceId: data.deviceId,
+        deviceCode: data.deviceCode,
         rainfall: data.rainfall,
         waterLevel: data.waterLevel,
         timestamp: data.timestamp || new Date()
@@ -18,7 +18,7 @@ class SensorLogRepository {
   async createMany(dataArray) {
     return await prisma.sensorLog.createMany({
       data: dataArray.map(data => ({
-        deviceId: data.deviceId,
+        deviceCode: data.deviceCode,
         rainfall: data.rainfall,
         waterLevel: data.waterLevel,
         timestamp: data.timestamp || new Date()
@@ -26,10 +26,10 @@ class SensorLogRepository {
     });
   }
 
-  async findByDeviceId(deviceId) {
+  async findBydeviceCode(deviceCode) {
     return await prisma.sensorLog.findMany({
       where: {
-        deviceId
+        deviceCode
       },
       orderBy: {
         timestamp: 'desc'
@@ -40,10 +40,10 @@ class SensorLogRepository {
     });
   }
 
-  async findLatestByDeviceId(deviceId, limit = 10) {
+  async findLatestBydeviceCode(deviceCode, limit = 10) {
     return await prisma.sensorLog.findMany({
       where: {
-        deviceId
+        deviceCode
       },
       orderBy: {
         timestamp: 'desc'
@@ -55,10 +55,10 @@ class SensorLogRepository {
     });
   }
 
-  async findByDateRange(deviceId, startDate, endDate) {
+  async findByDateRange(deviceCode, startDate, endDate) {
     return await prisma.sensorLog.findMany({
       where: {
-        deviceId,
+        deviceCode,
         timestamp: {
           gte: startDate,
           lte: endDate
@@ -73,7 +73,7 @@ class SensorLogRepository {
     });
   }
 
-  async findByTimeRange(startTime, endTime, deviceId = null) {
+  async findByTimeRange(startTime, endTime, deviceCode = null) {
     const whereClause = {
       timestamp: {
         gte: startTime,
@@ -81,8 +81,8 @@ class SensorLogRepository {
       }
     };
 
-    if (deviceId) {
-      whereClause.deviceId = deviceId;
+    if (deviceCode) {
+      whereClause.deviceCode = deviceCode;
     }
 
     return await prisma.sensorLog.findMany({
@@ -146,18 +146,18 @@ class SensorLogRepository {
     });
   }
 
-  async deleteByDeviceId(deviceId) {
+  async deleteBydeviceCode(deviceCode) {
     return await prisma.sensorLog.deleteMany({
       where: {
-        deviceId
+        deviceCode
       }
     });
   }
 
-  async getStatistics(deviceId, startDate, endDate) {
+  async getStatistics(deviceCode, startDate, endDate) {
     return await prisma.sensorLog.aggregate({
       where: {
-        deviceId,
+        deviceCode,
         timestamp: {
           gte: startDate,
           lte: endDate
@@ -179,7 +179,7 @@ class SensorLogRepository {
     });
   }
 
-  async getHourlyAverage(deviceId, date) {
+  async getHourlyAverage(deviceCode, date) {
     const startOfDay = new Date(date);
     startOfDay.setHours(0, 0, 0, 0);
     
@@ -193,7 +193,7 @@ class SensorLogRepository {
         AVG(water_level) as avg_water_level,
         COUNT(*) as count
       FROM sensor_logs 
-      WHERE device_id = ${deviceId} 
+      WHERE device_id = ${deviceCode} 
         AND timestamp >= ${startOfDay} 
         AND timestamp <= ${endOfDay}
       GROUP BY EXTRACT(hour FROM timestamp)
@@ -201,7 +201,7 @@ class SensorLogRepository {
     `;
   }
 
-  async getDailyAverage(deviceId, month, year) {
+  async getDailyAverage(deviceCode, month, year) {
     return await prisma.$queryRaw`
       SELECT 
         DATE(timestamp) as date,
@@ -213,7 +213,7 @@ class SensorLogRepository {
         MIN(water_level) as min_water_level,
         COUNT(*) as count
       FROM sensor_logs 
-      WHERE device_id = ${deviceId} 
+      WHERE device_id = ${deviceCode} 
         AND EXTRACT(month FROM timestamp) = ${month}
         AND EXTRACT(year FROM timestamp) = ${year}
       GROUP BY DATE(timestamp)
@@ -221,10 +221,10 @@ class SensorLogRepository {
     `;
   }
 
-  async getLatestReading(deviceId) {
+  async getLatestReading(deviceCode) {
     return await prisma.sensorLog.findFirst({
       where: {
-        deviceId
+        deviceCode
       },
       orderBy: {
         timestamp: 'desc'
@@ -235,23 +235,23 @@ class SensorLogRepository {
     });
   }
 
-  async getCount(deviceId = null) {
-    const whereClause = deviceId ? { deviceId } : {};
+  async getCount(deviceCode = null) {
+    const whereClause = deviceCode ? { deviceCode } : {};
     
     return await prisma.sensorLog.count({
       where: whereClause
     });
   }
 
-  async findHighRainfall(threshold = 5.0, deviceId = null) {
+  async findHighRainfall(threshold = 5.0, deviceCode = null) {
     const whereClause = {
       rainfall: {
         gte: threshold
       }
     };
 
-    if (deviceId) {
-      whereClause.deviceId = deviceId;
+    if (deviceCode) {
+      whereClause.deviceCode = deviceCode;
     }
 
     return await prisma.sensorLog.findMany({
@@ -265,15 +265,15 @@ class SensorLogRepository {
     });
   }
 
-  async findHighWaterLevel(threshold = 90.0, deviceId = null) {
+  async findHighWaterLevel(threshold = 90.0, deviceCode = null) {
     const whereClause = {
       waterLevel: {
         gte: threshold
       }
     };
 
-    if (deviceId) {
-      whereClause.deviceId = deviceId;
+    if (deviceCode) {
+      whereClause.deviceCode = deviceCode;
     }
 
     return await prisma.sensorLog.findMany({

@@ -9,9 +9,9 @@ class DeviceRepository {
   /**
    * Create a new device in the database
    * @param {Object} data - Device data
-   * @param {string} data.userId - User ID who owns the device
-   * @param {string} data.deviceId - Unique device identifier 
-   * @param {string} data.name - Device name
+   * @param {Object} data.id - Device data
+   * @param {string} data.deviceCode - Unique device identifier 
+   * @param {string} data.code - Device code
    * @param {string} [data.location] - Device location (optional)
    * @returns {Promise<Object>} Created device
    */
@@ -19,9 +19,9 @@ class DeviceRepository {
     try {
       return await prisma.device.create({
         data: {
-          userId: data.userId,
-          name: data.name,
+          code: data.code,
           location: data.location,
+          description : data.description
         },
       });
     } catch (error) {
@@ -30,10 +30,6 @@ class DeviceRepository {
         if (error.code === 'P2002') {
           // Duplicate unique field
           throw new Error(`Conflict: Duplicate field "${error.meta?.target}"`);
-        }
-        if (error.code === 'P2003') {
-          // Foreign key constraint fail
-          throw new Error('Invalid userId: related user not found');
         }
       }
 
@@ -50,16 +46,13 @@ class DeviceRepository {
    * @param {string} id - Device UUID
    * @returns {Promise<Object|null>} Found device or null
    */
-  async findById(id) {
+  async findByCode(code) {
     try {
       return await prisma.device.findUnique({
-        where: { id },
-        include: {
-          status: true
-        }
+        where: { code },
       });
     } catch (error) {
-      logger.error(`Error finding device by ID: ${error.message}`, error);
+      logger.error(`Error finding device by Code: ${error.message}`, error);
       throw error;
     }
   }
@@ -88,29 +81,6 @@ class DeviceRepository {
     }
   }
 
-  /**
-   * Find all devices belonging to a user
-   * @param {string} userId - User ID
-   * @returns {Promise<Array>} List of user's devices
-   */
-  async findByUserId(userId) {
-    try {
-      return await prisma.device.findMany({
-        where: {
-          userId
-        },
-        include: {
-          status: true
-        },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      });
-    } catch (error) {
-      logger.error(`Error finding devices by user ID: ${error.message}`, error);
-      throw error;
-    }
-  }
 
   /**
    * Update device details
@@ -123,7 +93,7 @@ class DeviceRepository {
       return await prisma.device.update({
         where: { id },
         data: {
-          name: data.name,
+          code: data.code,
           location: data.location
         }
       });
@@ -159,7 +129,7 @@ class DeviceRepository {
    */
   async deleteAssociatedRecords(id) {
     try {
-      // Get the device to access its deviceId
+      // Get the device to access its deviceCode
       const device = await this.findById(id);
       if (!device) return;
 
@@ -167,15 +137,15 @@ class DeviceRepository {
       await prisma.$transaction([
         // Delete device status
         prisma.deviceStatus.deleteMany({
-          where: { deviceId: device.deviceId }
+          where: { deviceCode: device.deviceCode }
         }),
         // Delete sensor logs
         prisma.sensorLog.deleteMany({
-          where: { deviceId: device.deviceId }
+          where: { deviceCode: device.deviceCode }
         }),
         // Delete alerts
         prisma.alert.deleteMany({
-          where: { deviceId: device.deviceId }
+          where: { deviceCode: device.deviceCode }
         })
       ]);
     } catch (error) {
@@ -201,7 +171,7 @@ class DeviceRepository {
   }
 
   /**
-   * Search devices by name or location
+   * Search devices by code or location
    * @param {string} query - Search query
    * @returns {Promise<Array>} Matching devices
    */
@@ -211,7 +181,7 @@ class DeviceRepository {
         where: {
           OR: [
             {
-              name: {
+              code: {
                 contains: query
               }
             },
@@ -221,7 +191,7 @@ class DeviceRepository {
               }
             },
             {
-              deviceId: {
+              deviceCode: {
                 contains: query
               }
             }
@@ -256,19 +226,19 @@ class DeviceRepository {
           }
         },
         select: {
-          deviceId: true
+          deviceCode: true
         },
-        distinct: ['deviceId'],
+        distinct: ['deviceCode'],
         take: limit
       });
 
       // Get full device details for these devices
-      const deviceIds = devicesWithRecentActivity.map(log => log.deviceId);
+      const deviceCodes = devicesWithRecentActivity.map(log => log.deviceCode);
       
       return await prisma.device.findMany({
         where: {
-          deviceId: {
-            in: deviceIds
+          deviceCode: {
+            in: deviceCodes
           }
         },
         include: {

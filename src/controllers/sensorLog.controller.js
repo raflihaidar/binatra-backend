@@ -4,9 +4,9 @@ import logger from '../utils/logger.js';
 class SensorLogController {
   getSensorLogs = async (req, res) => {
     try {
-      const { deviceId } = req.params;
+      const { deviceCode } = req.params;
       
-      const sensorLogs = await sensorLogService.getSensorLogsByDevice(deviceId);
+      const sensorLogs = await sensorLogService.getSensorLogsByDevice(deviceCode);
       return res.status(200).json({
         message: "Sensor logs retrieved successfully",
         data: sensorLogs,
@@ -43,10 +43,10 @@ class SensorLogController {
 
   getLatestSensorLogs = async (req, res) => {
     try {
-      const { deviceId } = req.params;
+      const { deviceCode } = req.params;
       const { limit = 10 } = req.query;
 
-      const sensorLogs = await sensorLogService.getLatestSensorLogs(deviceId, limit);
+      const sensorLogs = await sensorLogService.getLatestSensorLogs(deviceCode, limit);
 
       res.status(200).json({
         message: "Latest sensor logs retrieved successfully",
@@ -67,11 +67,11 @@ class SensorLogController {
 
   getSensorLogsByDateRange = async (req, res) => {
     try {
-      const { deviceId } = req.params;
+      const { deviceCode } = req.params;
       const { startDate, endDate } = req.query;
 
       const sensorLogs = await sensorLogService.getSensorLogsByDateRange(
-        deviceId,
+        deviceCode,
         startDate,
         endDate
       );
@@ -96,11 +96,11 @@ class SensorLogController {
 
   getSensorLogStatistics = async (req, res) => {
     try {
-      const { deviceId } = req.params;
+      const { deviceCode } = req.params;
       const { startDate, endDate } = req.query;
 
       const statistics = await sensorLogService.getSensorLogStatistics(
-        deviceId,
+        deviceCode,
         startDate,
         endDate
       );
@@ -124,10 +124,10 @@ class SensorLogController {
 
   getHourlyAverage = async (req, res) => {
     try {
-      const { deviceId } = req.params;
+      const { deviceCode } = req.params;
       const { date } = req.query;
 
-      const hourlyData = await sensorLogService.getHourlyAverage(deviceId, date);
+      const hourlyData = await sensorLogService.getHourlyAverage(deviceCode, date);
 
       res.status(200).json({
         message: "Hourly average retrieved successfully",
@@ -145,10 +145,10 @@ class SensorLogController {
 
   getDailyAverage = async (req, res) => {
     try {
-      const { deviceId } = req.params;
+      const { deviceCode } = req.params;
       const { month, year } = req.query;
 
-      const dailyData = await sensorLogService.getDailyAverage(deviceId, month, year);
+      const dailyData = await sensorLogService.getDailyAverage(deviceCode, month, year);
 
       res.status(200).json({
         message: "Daily average retrieved successfully",
@@ -166,9 +166,9 @@ class SensorLogController {
 
   getHighRainfallAlerts = async (req, res) => {
     try {
-      const { threshold = 5.0, deviceId } = req.query;
+      const { threshold = 5.0, deviceCode } = req.query;
 
-      const alerts = await sensorLogService.getHighRainfallAlerts(threshold, deviceId);
+      const alerts = await sensorLogService.getHighRainfallAlerts(threshold, deviceCode);
 
       res.status(200).json({
         message: "High rainfall alerts retrieved successfully",
@@ -187,9 +187,9 @@ class SensorLogController {
 
   getHighWaterLevelAlerts = async (req, res) => {
     try {
-      const { threshold = 90.0, deviceId } = req.query;
+      const { threshold = 90.0, deviceCode } = req.query;
 
-      const alerts = await sensorLogService.getHighWaterLevelAlerts(threshold, deviceId);
+      const alerts = await sensorLogService.getHighWaterLevelAlerts(threshold, deviceCode);
 
       res.status(200).json({
         message: "High water level alerts retrieved successfully",
@@ -208,9 +208,9 @@ class SensorLogController {
 
   getLatestReading = async (req, res) => {
     try {
-      const { deviceId } = req.params;
+      const { deviceCode } = req.params;
 
-      const latestReading = await sensorLogService.getLatestReading(deviceId);
+      const latestReading = await sensorLogService.getLatestReading(deviceCode);
 
       if (!latestReading) {
         return res.status(404).json({
@@ -292,9 +292,9 @@ class SensorLogController {
 
   deleteSensorLogsByDevice = async (req, res) => {
     try {
-      const { deviceId } = req.params;
+      const { deviceCode } = req.params;
 
-      const result = await sensorLogService.deleteSensorLogsByDevice(deviceId);
+      const result = await sensorLogService.deleteSensorLogsByDevice(deviceCode);
 
       res.status(200).json({
         message: "All sensor logs for device deleted successfully",
@@ -311,15 +311,15 @@ class SensorLogController {
 
   getSensorLogCount = async (req, res) => {
     try {
-      const { deviceId } = req.query;
+      const { deviceCode } = req.query;
 
-      const count = await sensorLogService.getSensorLogCount(deviceId);
+      const count = await sensorLogService.getSensorLogCount(deviceCode);
 
       res.status(200).json({
         message: "Sensor log count retrieved successfully",
         data: {
           count,
-          deviceId: deviceId || 'all'
+          deviceCode: deviceCode || 'all'
         }
       });
     } catch (error) {
