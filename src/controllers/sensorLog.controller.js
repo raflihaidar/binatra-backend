@@ -122,95 +122,13 @@ class SensorLogController {
     }
   }
 
-  getHourlyAverage = async (req, res) => {
-    try {
-      const { deviceCode } = req.params;
-      const { date } = req.query;
-
-      const hourlyData = await sensorLogService.getHourlyAverage(deviceCode, date);
-
-      res.status(200).json({
-        message: "Hourly average retrieved successfully",
-        data: hourlyData,
-        date
-      });
-    } catch (error) {
-      logger.error('Get hourly average error:', error);
-      res.status(500).json({
-        message: "Failed to retrieve hourly average",
-        error: error.message
-      });
-    }
-  }
-
-  getDailyAverage = async (req, res) => {
-    try {
-      const { deviceCode } = req.params;
-      const { month, year } = req.query;
-
-      const dailyData = await sensorLogService.getDailyAverage(deviceCode, month, year);
-
-      res.status(200).json({
-        message: "Daily average retrieved successfully",
-        data: dailyData,
-        period: { month: parseInt(month), year: parseInt(year) }
-      });
-    } catch (error) {
-      logger.error('Get daily average error:', error);
-      res.status(500).json({
-        message: "Failed to retrieve daily average",
-        error: error.message
-      });
-    }
-  }
-
-  getHighRainfallAlerts = async (req, res) => {
-    try {
-      const { threshold = 5.0, deviceCode } = req.query;
-
-      const alerts = await sensorLogService.getHighRainfallAlerts(threshold, deviceCode);
-
-      res.status(200).json({
-        message: "High rainfall alerts retrieved successfully",
-        data: alerts,
-        threshold: parseFloat(threshold),
-        total: alerts.length
-      });
-    } catch (error) {
-      logger.error('Get high rainfall alerts error:', error);
-      res.status(500).json({
-        message: "Failed to retrieve high rainfall alerts",
-        error: error.message
-      });
-    }
-  }
-
-  getHighWaterLevelAlerts = async (req, res) => {
-    try {
-      const { threshold = 90.0, deviceCode } = req.query;
-
-      const alerts = await sensorLogService.getHighWaterLevelAlerts(threshold, deviceCode);
-
-      res.status(200).json({
-        message: "High water level alerts retrieved successfully",
-        data: alerts,
-        threshold: parseFloat(threshold),
-        total: alerts.length
-      });
-    } catch (error) {
-      logger.error('Get high water level alerts error:', error);
-      res.status(500).json({
-        message: "Failed to retrieve high water level alerts",
-        error: error.message
-      });
-    }
-  }
-
   getLatestReading = async (req, res) => {
-    try {
-      const { deviceCode } = req.params;
+    console.log("device code : ", req.params)
 
-      const latestReading = await sensorLogService.getLatestReading(deviceCode);
+    try {
+      const { deviceId } = req.params;
+
+      const latestReading = await sensorLogService.getLatestReading(deviceId);
 
       if (!latestReading) {
         return res.status(404).json({
@@ -304,28 +222,6 @@ class SensorLogController {
       logger.error('Delete sensor logs by device error:', error);
       res.status(500).json({
         message: "Failed to delete sensor logs",
-        error: error.message
-      });
-    }
-  }
-
-  getSensorLogCount = async (req, res) => {
-    try {
-      const { deviceCode } = req.query;
-
-      const count = await sensorLogService.getSensorLogCount(deviceCode);
-
-      res.status(200).json({
-        message: "Sensor log count retrieved successfully",
-        data: {
-          count,
-          deviceCode: deviceCode || 'all'
-        }
-      });
-    } catch (error) {
-      logger.error('Get sensor log count error:', error);
-      res.status(500).json({
-        message: "Failed to get sensor log count",
         error: error.message
       });
     }

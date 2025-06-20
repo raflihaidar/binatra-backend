@@ -11,8 +11,12 @@ import { router as auth_routes } from './routes/auth.route.js'
 import { router as weather_routes } from './routes/weather.route.js'
 import { router as device_routes } from './routes/device.route.js'
 import { router as sensorLog_routes } from './routes/sensorLog.route.js'
+import { router as location_routes } from './routes/location.route.js'
 import { sensorLogController } from './controllers/sensorLog.controller.js'
 import { deviceController } from './controllers/device.controller.js'
+import { locationController } from './controllers/location.controller.js'
+import { locationService } from './services/location.service.js'
+import { DeviceMonitoringService } from './services/deviceMonitoring.service.js'
 import logger from './utils/logger.js'
 
 dotenv.config()
@@ -23,6 +27,9 @@ const io = setupSocket(server, () => sensorData)
 
 const port = process.env.APP_PORT || 8080
 const mqttClient = mqtt.connect(mqttConfig)
+
+// Initialize device monitoring service
+const deviceMonitoring = new DeviceMonitoringService(io);
 
 let sensorData = {
   deviceId: null,
@@ -39,31 +46,73 @@ app.use(cookieParser());
 app.use(bodyParser.json())
 app.use(bodyParser.urlencoded({ extended: true }))
 
-// REST API fallback route
+// REST API routes
 app.use("/api/v1/auth", auth_routes)
 app.use('/api/v1/cuaca', weather_routes)
 app.use('/api/v1/devices', device_routes)
 app.use('/api/v1/sensorLogs', sensorLog_routes)
+app.use('/api/v1/locations', location_routes)
+
+// Helper function untuk create notification
+const createNotification = (type, data) => {
+  const baseNotification = {
+    id: `${type}-${Date.now()}`,
+    type: type,
+    timestamp: new Date().toISOString(),
+    ...data
+  };
+
+  return baseNotification;
+};
+
+// Helper function untuk emit notification
+const emitNotification = (notification) => {
+  // Emit ke semua client
+  io.emit('new-notification', notification);
+  
+  // Emit ke specific subscribers jika ada
+  if (notification.deviceCode) {
+    io.emit(`notification-device-${notification.deviceCode}`, notification);
+  }
+  
+  if (notification.locationId) {
+    io.emit(`notification-location-${notification.locationId}`, notification);
+  }
+  
+  logger.info('Notification emitted:', {
+    type: notification.type,
+    title: notification.title,
+    deviceCode: notification.deviceCode,
+    locationId: notification.locationId
+  });
+};
 
 // MQTT connection
 mqttClient.on('connect', () => {
   console.log('Connected to MQTT broker')
+  
+  // Start device monitoring service
+  deviceMonitoring.start();
 
   const topics = [
-    'binatra-device/sensor',
-    'binatra-device/check/device'
+    'binatra-device/+/heartbeat',  // Device heartbeat: binatra-device/{deviceCode}/heartbeat
+    'binatra-device/+/sensor',     // Device sensor data: binatra-device/{deviceCode}/sensor
+    'binatra-device/sensor',       // Legacy sensor topic
+    'binatra-device/check/device'  // Device check topic
   ]
 
   mqttClient.subscribe(topics, (err) => {
     if (!err) {
       console.log('Subscribed to:', topics.join(', '))
+      logger.info('MQTT topics subscribed successfully', { topics })
     } else {
       console.error('MQTT subscribe error:', err)
+      logger.error('MQTT subscribe error:', err)
     }
   })
 })
 
-// MQTT message handler
+// Enhanced MQTT message handler with Location integration
 mqttClient.on('message', async (topic, message) => {
   const msg = message.toString()
   const timestamp = new Date()
@@ -71,21 +120,76 @@ mqttClient.on('message', async (topic, message) => {
   try {
     console.log(`Received MQTT message from topic: ${topic}`)
 
-    let deviceCode = null
-    let tempSensorData = { ...sensorData }
-
-    // Extract device code dari topic jika ada
     const topicParts = topic.split('/')
+    let deviceCode = null
+
+    // Extract device code from topic if exists
     if (topicParts.length >= 3 && topicParts[0] === 'binatra-device') {
-      deviceCode = topicParts[1] // device code dari topic path
+      deviceCode = topicParts[1]
     }
 
-    switch (topic) {
-      case 'binatra-device/check/device': {
-        // Topic untuk check ketersediaan device dan create jika tidak ada
+    switch (true) {
+      // Handle heartbeat messages: binatra-device/{deviceCode}/heartbeat
+      case topic.includes('/heartbeat'): {
+        try {
+          const json = JSON.parse(msg);
+          const heartbeatDeviceCode = deviceCode || json.deviceCode || json.code;
+          
+          if (!heartbeatDeviceCode) {
+            logger.error('Heartbeat message missing device code', { topic, message: msg });
+            break;
+          }
+
+          // Get device status before processing heartbeat
+          const deviceBefore = await deviceController.getDeviceByCode(heartbeatDeviceCode);
+          const previousStatus = deviceBefore?.status || 'DISCONNECTED';
+
+          // Handle heartbeat through monitoring service
+          const device = await deviceMonitoring.handleHeartbeat(heartbeatDeviceCode, {
+            description: json.description,
+            location: json.location,
+            timestamp: json.timestamp
+          });
+
+          // Check if device connection status changed
+          if (previousStatus !== device.status) {
+            const notification = createNotification('device_status_change', {
+              title: device.status === 'CONNECTED' ? 
+                `Device ${heartbeatDeviceCode} Connected` : 
+                `Device ${heartbeatDeviceCode} Disconnected`,
+              deviceCode: heartbeatDeviceCode,
+              previousStatus: previousStatus,
+              newStatus: device.status,
+              severity: device.status === 'CONNECTED' ? 'low' : 'medium',
+              location: json.location || 'Unknown Location',
+              timeframe: 'status berubah'
+            });
+
+            emitNotification(notification);
+          }
+
+          logger.info(`Heartbeat processed for device: ${heartbeatDeviceCode}`, {
+            deviceCode: heartbeatDeviceCode,
+            status: device.status,
+            lastSeen: device.lastSeen,
+            statusChanged: previousStatus !== device.status
+          });
+
+        } catch (heartbeatError) {
+          logger.error('Error processing heartbeat:', heartbeatError);
+          io.emit('device_heartbeat_error', {
+            topic,
+            error: heartbeatError.message,
+            timestamp: timestamp.toISOString()
+          });
+        }
+        break;
+      }
+
+      // Handle device check messages
+      case topic === 'binatra-device/check/device': {
         try {
           const json = JSON.parse(msg)
-          console.log("json : ", json)
           const checkDeviceCode = json.code
           
           if (!checkDeviceCode) {
@@ -99,97 +203,44 @@ mqttClient.on('message', async (topic, message) => {
 
           console.log(`Checking device availability for code: ${checkDeviceCode}`)
 
-          // Check apakah device sudah ada di database
-          const mockReqCheck = {
-            params: { code: checkDeviceCode }
+          // Check if device exists before creation
+          const existingDevice = await deviceController.getDeviceByCode(checkDeviceCode);
+          const isNewDevice = !existingDevice;
+
+          // Use deviceController.ensureDeviceExists for consistency
+          const device = await deviceController.ensureDeviceExists({
+            code: checkDeviceCode,
+            description: json.description || `Auto-created device with code ${checkDeviceCode}`,
+            location: json.location || 'Unknown Location'
+          });
+
+          // If it's a new device, send notification
+          if (isNewDevice) {
+            const notification = createNotification('new_device', {
+              title: `New Device Registered: ${checkDeviceCode}`,
+              deviceCode: checkDeviceCode,
+              severity: 'low',
+              location: json.location || 'Unknown Location',
+              timeframe: 'baru terdaftar'
+            });
+
+            emitNotification(notification);
           }
 
-          const mockResCheck = {
-            deviceFound: false,
-            deviceData: null,
-            status: (code) => ({
-              json: (data) => {
-                if (code === 200 && data.success) {
-                  // Device ditemukan
-                  mockResCheck.deviceFound = true
-                  mockResCheck.deviceData = data.data
-                  
-                  logger.info('Device found:', {
-                    deviceCode: checkDeviceCode,
-                    id: data.data.id,
-                    location: data.data.location
-                  })
-                  
-                  // Emit konfirmasi device tersedia
-                  io.emit('device-check-result', {
-                    deviceCode: checkDeviceCode,
-                    exists: true,
-                    device: data.data,
-                    action: 'found',
-                    timestamp: timestamp.toISOString()
-                  })
-                } else {
-                  // Device tidak ditemukan
-                  mockResCheck.deviceFound = false
-                  
-                  logger.info('Device not found, will create new device:', {
-                    deviceCode: checkDeviceCode
-                  })
-                }
-              }
-            })
-          }
-
-          // Check device menggunakan controller
-          await deviceController.findDeviceByCode(mockReqCheck, mockResCheck)
-
-          // Jika device tidak ditemukan, create device baru
-          if (!mockResCheck.deviceFound) {
-            const deviceData = {
-              code: checkDeviceCode,
-              description: json.description || `Auto-created device with code ${checkDeviceCode}`,
-              location: json.location || 'Unknown Location'
-            }
-
-            const mockReqCreate = {
-              body: deviceData
-            }
-
-            const mockResCreate = {
-              status: (code) => ({
-                json: (data) => {
-                  if (code === 201 && data.success) {
-                    logger.info('New device created successfully:', {
-                      deviceId: data.data.id,
-                      deviceCode: data.data.code,
-                      location: data.data.location
-                    })
-                    
-                    // Emit konfirmasi device berhasil dibuat
-                    io.emit('device-check-result', {
-                      deviceCode: checkDeviceCode,
-                      exists: false,
-                      device: data.data,
-                      action: 'created',
-                      timestamp: timestamp.toISOString()
-                    })
-                  } else {
-                    logger.error('Failed to create new device:', data)
-                    
-                    // Emit error jika gagal create
-                    io.emit('device-check-error', {
-                      deviceCode: checkDeviceCode,
-                      error: data.error || 'Failed to create device',
-                      timestamp: timestamp.toISOString()
-                    })
-                  }
-                }
-              })
-            }
-
-            // Create device menggunakan controller
-            await deviceController.createDevice(mockReqCreate, mockResCreate)
-          }
+          logger.info('Device check/create completed:', {
+            deviceCode: checkDeviceCode,
+            deviceId: device.id,
+            status: device.status,
+            isNewDevice: isNewDevice
+          });
+          
+          // Emit device check result
+          io.emit('device-check-result', {
+            deviceCode: checkDeviceCode,
+            device: device,
+            isNewDevice: isNewDevice,
+            timestamp: timestamp.toISOString()
+          });
 
         } catch (checkError) {
           logger.error('Error during device check/create process:', checkError)
@@ -201,180 +252,212 @@ mqttClient.on('message', async (topic, message) => {
         break
       }
 
-      case 'binatra-device/sensor': {
-        // Topic untuk single device dengan data gabungan
+      // Handle sensor data messages
+      case topic === 'binatra-device/sensor' || topic.includes('/sensor'): {
         const json = JSON.parse(msg)
         
-        // Default device code jika tidak ada di topic
-        deviceCode = json.deviceCode || json.code
+        // Get device code from topic or message
+        const sensorDeviceCode = deviceCode || json.deviceCode || json.code
         
-        tempSensorData = {
-          deviceCode: deviceCode,
-          waterlevel: json.waterlevel_cm || json.waterLevel || json.waterlevel || null,
-          rainfall: json.rainfall_mm || json.rainfall || json.rain || null,
+        if (!sensorDeviceCode) {
+          logger.error('Sensor data missing device code', { topic, message: msg });
+          break;
+        }
+
+        const waterLevel = json.waterlevel_cm || json.waterLevel || json.waterlevel || null;
+        const rainfall = json.rainfall_mm || json.rainfall || json.rain || null;
+
+        const tempSensorData = {
+          deviceCode: sensorDeviceCode,
+          waterlevel: waterLevel,
+          rainfall: rainfall,
           timestamp: timestamp,
           lastUpdate: timestamp.toISOString()
         }
 
-        // Langsung save ke database jika ada deviceCode dan data sensor valid
-        if (deviceCode && (tempSensorData.rainfall !== null || tempSensorData.waterlevel !== null)) {
+        try {
+          await deviceMonitoring.handleHeartbeat(sensorDeviceCode);
+        } catch (heartbeatError) {
+          logger.warn(`Failed to update heartbeat for sensor data from ${sensorDeviceCode}:`, heartbeatError);
+        }
+
+        // 2. Save sensor data to SensorLog table
+        if (waterLevel !== null || rainfall !== null) {
           try {
-            // Prepare data untuk controller
+            // Prepare data for controller
             const sensorLogData = {
-              deviceCode: deviceCode,
-              rainfall: tempSensorData.rainfall,
-              waterLevel: tempSensorData.waterlevel,
+              deviceCode: sensorDeviceCode,
+              rainfall: rainfall,
+              waterLevel: waterLevel,
               timestamp: timestamp
             }
 
-            // Create mock request untuk controller
-            const mockReq = {
-              body: sensorLogData
-            }
-
-            // Create mock response untuk controller
+            // Create mock request for controller
+            const mockReq = { body: sensorLogData }
             const mockRes = {
               status: (code) => ({
                 json: (data) => {
                   if (code === 201) {
-                    logger.info('MQTT sensor data saved immediately:', {
+                    logger.info('MQTT sensor data saved:', {
                       id: data.data.id,
                       deviceCode: data.data.deviceCode,
                       rainfall: data.data.rainfall,
                       waterLevel: data.data.waterLevel
                     })
                     
-                    // Emit konfirmasi save
+                    // Emit sensor data saved confirmation
                     io.emit('sensor-data-saved', {
                       ...tempSensorData,
                       savedToDatabase: true,
-                      logId: data.data.id,
-                      immediate: true
+                      logId: data.data.id
                     })
                   } else {
-                    logger.error('Failed to save MQTT sensor data immediately:', data)
+                    logger.error('Failed to save MQTT sensor data:', data)
                     io.emit('sensor-data-error', {
                       ...tempSensorData,
                       savedToDatabase: false,
-                      error: data.error || 'Save failed',
-                      immediate: true
+                      error: data.error || 'Save failed'
                     })
                   }
                 }
               })
             }
 
-            // Langsung save menggunakan controller
+            // Save using controller
             await sensorLogController.createSensorLog(mockReq, mockRes)
             
           } catch (saveError) {
-            logger.error('Error saving MQTT data immediately:', saveError)
+            logger.error('Error saving MQTT sensor data:', saveError)
             io.emit('sensor-data-error', {
               ...tempSensorData,
               savedToDatabase: false,
-              error: saveError.message,
-              immediate: true
+              error: saveError.message
             })
           }
         }
-        break
-      }
 
-      // Handle topic dengan device code di path: binatra-device/{deviceCode}/sensor
-      default: {
-        if (topic.startsWith('binatra-device/') && topic.endsWith('/sensor')) {
-          const json = JSON.parse(msg)
-          
-          // Device code dari topic path (binatra-device/{deviceCode}/sensor)
-          const extractedDeviceCode = topicParts[1]
-          
-          tempSensorData = {
-            deviceCode: extractedDeviceCode,
-            waterlevel: json.waterlevel_cm || json.waterLevel || json.waterlevel || null,
-            rainfall: json.rainfall_mm || json.rainfall || json.rain || null,
-            timestamp: timestamp,
-            lastUpdate: timestamp.toISOString()
-          }
+        if (waterLevel !== null) {
+          try {
+            const locationResult = await locationController.processSensorData(
+              sensorDeviceCode, 
+              waterLevel, 
+              rainfall || 0
+            );
 
-          // Langsung save ke database jika ada deviceCode dan data sensor valid
-          if (extractedDeviceCode && (tempSensorData.rainfall !== null || tempSensorData.waterlevel !== null)) {
-            try {
-              // Prepare data untuk controller
-              const sensorLogData = {
-                deviceCode: extractedDeviceCode,
-                rainfall: tempSensorData.rainfall,
-                waterLevel: tempSensorData.waterlevel,
-                timestamp: timestamp
-              }
+            // Emit location status change if status changed
+            if (locationResult.statusChanged) {
+              const statusData = {
+                locationId: locationResult.location.id,
+                locationName: locationResult.location.name,
+                previousStatus: locationResult.previousStatus,
+                newStatus: locationResult.newStatus,
+                waterLevel: waterLevel,
+                rainfall: rainfall,
+                timestamp: timestamp.toISOString()
+              };
 
-              // Create mock request untuk controller
-              const mockReq = {
-                body: sensorLogData
-              }
-
-              // Create mock response untuk controller
-              const mockRes = {
-                status: (code) => ({
-                  json: (data) => {
-                    if (code === 201) {
-                      logger.info('MQTT sensor data saved (device-specific topic):', {
-                        id: data.data.id,
-                        deviceCode: data.data.deviceCode,
-                        rainfall: data.data.rainfall,
-                        waterLevel: data.data.waterLevel,
-                        topic: topic
-                      })
-                      
-                      // Emit konfirmasi save
-                      io.emit('sensor-data-saved', {
-                        ...tempSensorData,
-                        savedToDatabase: true,
-                        logId: data.data.id,
-                        immediate: true,
-                        topic: topic
-                      })
-                    } else {
-                      logger.error('Failed to save MQTT sensor data (device-specific topic):', data)
-                      io.emit('sensor-data-error', {
-                        ...tempSensorData,
-                        savedToDatabase: false,
-                        error: data.error || 'Save failed',
-                        immediate: true,
-                        topic: topic
-                      })
-                    }
-                  }
-                })
-              }
-
-              // Langsung save menggunakan controller
-              await sensorLogController.createSensorLog(mockReq, mockRes)
+              // Emit to all clients
+              io.emit('location_status_changed', statusData);
               
-            } catch (saveError) {
-              logger.error('Error saving MQTT data (device-specific topic):', saveError)
-              io.emit('sensor-data-error', {
-                ...tempSensorData,
-                savedToDatabase: false,
-                error: saveError.message,
-                immediate: true,
-                topic: topic
-              })
+              // Emit to specific location subscribers
+              io.emit(`location_status_${locationResult.location.id}`, statusData);
+
+              // CREATE NOTIFICATION FOR STATUS CHANGE (only for non-AMAN status)
+              if (locationResult.newStatus !== 'AMAN') {
+                const getSeverity = (status) => {
+                  switch (status) {
+                    case 'BAHAYA': return 'high';
+                    case 'SIAGA': return 'high';
+                    case 'WASPADA': return 'medium';
+                    default: return 'low';
+                  }
+                };
+
+                const getStatusTitle = (status, waterLevel) => {
+                  switch (status) {
+                    case 'BAHAYA': return `Banjir Ketinggian ${waterLevel}cm`;
+                    case 'SIAGA': return `Siaga Ketinggian ${waterLevel}cm`;
+                    case 'WASPADA': return `Waspada Ketinggian ${waterLevel}cm`;
+                    default: return `Status ${status} ${waterLevel}cm`;
+                  }
+                };
+
+                const notification = createNotification('location_status_change', {
+                  title: getStatusTitle(locationResult.newStatus, waterLevel),
+                  locationId: locationResult.location.id,
+                  locationName: locationResult.location.name,
+                  deviceCode: sensorDeviceCode,
+                  location: locationResult.location.district || locationResult.location.name,
+                  timeframe: locationResult.duration ? `dalam ${locationResult.duration} minutes` : 'status berubah',
+                  severity: getSeverity(locationResult.newStatus),
+                  previousStatus: locationResult.previousStatus,
+                  newStatus: locationResult.newStatus,
+                  waterLevel: waterLevel,
+                  rainfall: rainfall
+                });
+
+                emitNotification(notification);
+
+                // SPECIAL NOTIFICATION FOR NEW FLOOD LOCATIONS
+                if (locationResult.previousStatus === 'AMAN' && 
+                    ['WASPADA', 'SIAGA', 'BAHAYA'].includes(locationResult.newStatus)) {
+                  
+                  const floodNotification = createNotification('new_flood_location', {
+                    title: `Lokasi Banjir Baru: ${locationResult.location.name}`,
+                    locationId: locationResult.location.id,
+                    locationName: locationResult.location.name,
+                    deviceCode: sensorDeviceCode,
+                    location: locationResult.location.district || locationResult.location.name,
+                    timeframe: `status ${locationResult.newStatus}`,
+                    severity: 'high',
+                    newStatus: locationResult.newStatus,
+                    waterLevel: waterLevel,
+                    rainfall: rainfall
+                  });
+
+                  emitNotification(floodNotification);
+                }
+              }
+              
+              logger.info(`Location status changed: ${locationResult.location.name} from ${locationResult.previousStatus} to ${locationResult.newStatus}`);
             }
+
+            // Emit updated flood warnings list for dashboard cards
+            const activeWarnings = await locationService.getActiveFloodWarnings();
+            io.emit('flood_warnings_updated', {
+              warnings: activeWarnings,
+              count: activeWarnings.length,
+              timestamp: timestamp.toISOString()
+            });
+
+            // Emit flood summary for dashboard counters
+            const floodSummary = await locationService.getFloodSummary();
+            io.emit('flood_summary_updated', {
+              summary: floodSummary,
+              timestamp: timestamp.toISOString()
+            });
+
+          } catch (locationError) {
+            logger.error('Error processing location status:', locationError);
+            io.emit('location_processing_error', {
+              deviceCode: sensorDeviceCode,
+              error: locationError.message,
+              timestamp: timestamp.toISOString()
+            });
           }
         }
+
+        // 4. Update global sensor data and emit to clients
+        sensorData = tempSensorData
+        io.emit('sensor-data', sensorData)
+        io.emit(`sensor-data-${sensorData.deviceCode}`, sensorData)
+        
         break
       }
-    }
 
-    // Update global sensor data (hanya untuk sensor data, bukan device check)
-    if (topic !== 'binatra-device/check/device') {
-      sensorData = tempSensorData
-
-      // Emit real-time data to all connected clients (data sudah tersimpan di atas)
-      io.emit('sensor-data', sensorData)
-      // Emit specific device data
-      if (sensorData.deviceCode) {
-        io.emit(`sensor-data-${sensorData.deviceCode}`, sensorData)
+      default: {
+        logger.warn(`Unhandled MQTT topic: ${topic}`, { message: msg });
+        break;
       }
     }
 
@@ -395,6 +478,7 @@ mqttClient.on('message', async (topic, message) => {
     })
   }
 })
+
 // MQTT error handler
 mqttClient.on('error', (error) => {
   console.error('MQTT Client Error:', error)
@@ -405,52 +489,125 @@ mqttClient.on('error', (error) => {
 mqttClient.on('close', () => {
   console.log('MQTT connection closed')
   logger.warn('MQTT connection closed')
+  
+  // Stop device monitoring when MQTT disconnects
+  deviceMonitoring.stop();
 })
 
-// Socket.IO connection
+// Enhanced Socket.IO connection with Location features
 io.on('connection', (socket) => {
   console.log('Client connected:', socket.id)
 
-  // Handle client request untuk data device tertentu
+  // Send current device status summary to new clients
+  deviceMonitoring.getStatusSummary().then(summary => {
+    socket.emit('device_status_summary', summary);
+  }).catch(error => {
+    logger.error('Error getting device status summary for new client:', error);
+  });
+
+  // Send current flood summary to new clients
+  locationService.getFloodSummary().then(summary => {
+    socket.emit('flood_summary', summary);
+  }).catch(error => {
+    logger.error('Error getting flood summary for new client:', error);
+  });
+
+  // Send current active flood warnings to new clients
+  locationService.getActiveFloodWarnings().then(warnings => {
+    socket.emit('flood_warnings_updated', {
+      warnings: warnings,
+      count: warnings.length
+    });
+  }).catch(error => {
+    logger.error('Error getting active warnings for new client:', error);
+  });
+
+  // Handle client request for device status
+  socket.on('subscribe-device-status', (deviceCode) => {
+    socket.join(`device-status-${deviceCode}`)
+    console.log(`Client ${socket.id} subscribed to device status ${deviceCode}`)
+  })
+
+  socket.on('unsubscribe-device-status', (deviceCode) => {
+    socket.leave(`device-status-${deviceCode}`)
+    console.log(`Client ${socket.id} unsubscribed from device status ${deviceCode}`)
+  })
+
+  // Handle location-specific subscriptions
+  socket.on('subscribe-location', (locationId) => {
+    socket.join(`location-${locationId}`);
+    console.log(`Client ${socket.id} subscribed to location ${locationId}`);
+  });
+
+  socket.on('unsubscribe-location', (locationId) => {
+    socket.leave(`location-${locationId}`);
+    console.log(`Client ${socket.id} unsubscribed from location ${locationId}`);
+  });
+
+  // NEW: Handle notification subscriptions
+  socket.on('subscribe-notifications', () => {
+    socket.join('notifications');
+    console.log(`Client ${socket.id} subscribed to notifications`);
+  });
+
+  socket.on('unsubscribe-notifications', () => {
+    socket.leave('notifications');
+    console.log(`Client ${socket.id} unsubscribed from notifications`);
+  });
+
+  socket.on('subscribe-device-notifications', (deviceCode) => {
+    socket.join(`notification-device-${deviceCode}`);
+    console.log(`Client ${socket.id} subscribed to device notifications for ${deviceCode}`);
+  });
+
+  socket.on('subscribe-location-notifications', (locationId) => {
+    socket.join(`notification-location-${locationId}`);
+    console.log(`Client ${socket.id} subscribed to location notifications for ${locationId}`);
+  });
+
+  // Handle request for location details
+  socket.on('get-location-details', async (locationId) => {
+    try {
+      const location = await locationService.getLocationById(locationId);
+      socket.emit('location-details', location);
+    } catch (error) {
+      socket.emit('error', { 
+        message: 'Failed to get location details', 
+        error: error.message 
+      });
+    }
+  });
+
+  // Handle request for current flood status
+  socket.on('get-flood-status', async () => {
+    try {
+      const [summary, warnings] = await Promise.all([
+        locationService.getFloodSummary(),
+        locationService.getActiveFloodWarnings()
+      ]);
+      
+      socket.emit('flood-status-response', {
+        summary,
+        warnings,
+        timestamp: new Date().toISOString()
+      });
+    } catch (error) {
+      socket.emit('error', { 
+        message: 'Failed to get flood status', 
+        error: error.message 
+      });
+    }
+  });
+
+  // Handle device subscription for sensor data
   socket.on('subscribe-device', (deviceId) => {
     socket.join(`device-${deviceId}`)
     console.log(`Client ${socket.id} subscribed to device ${deviceId}`)
   })
 
-  // Handle client unsubscribe dari device
   socket.on('unsubscribe-device', (deviceId) => {
     socket.leave(`device-${deviceId}`)
     console.log(`Client ${socket.id} unsubscribed from device ${deviceId}`)
-  })
-
-  // Handle request untuk latest sensor data menggunakan controller
-  socket.on('get-latest-data', async (deviceId) => {
-    try {
-      if (deviceId) {
-        // Create mock request/response untuk controller
-        const mockReq = {
-          params: { deviceId }
-        }
-
-        const mockRes = {
-          status: (code) => ({
-            json: (data) => {
-              if (code === 200) {
-                socket.emit('latest-sensor-data', data.data)
-              } else {
-                socket.emit('error', { message: 'Failed to get latest data', error: data.error })
-              }
-            }
-          })
-        }
-
-        await sensorLogController.getLatestReading(mockReq, mockRes)
-      } else {
-        socket.emit('latest-sensor-data', sensorData)
-      }
-    } catch (error) {
-      socket.emit('error', { message: 'Failed to get latest data', error: error.message })
-    }
   })
 
   socket.on('disconnect', () => {
@@ -458,29 +615,69 @@ io.on('connection', (socket) => {
   })
 })
 
-// Health check endpoint
-app.get('/health', (req, res) => {
-  res.json({
-    status: 'healthy',
-    mqtt: mqttClient.connected,
-    lastSensorData: sensorData,
-    timestamp: new Date().toISOString()
-  })
+// Enhanced health check endpoint with location status
+app.get('/health', async (req, res) => {
+  try {
+    const [deviceStatusSummary, floodSummary] = await Promise.all([
+      deviceMonitoring.getStatusSummary(),
+      locationService.getFloodSummary()
+    ]);
+    
+    res.json({
+      status: 'healthy',
+      mqtt: mqttClient.connected,
+      deviceMonitoring: {
+        active: deviceMonitoring.intervalId !== null,
+        heartbeatTimeout: deviceMonitoring.heartbeatTimeout,
+        checkInterval: deviceMonitoring.checkInterval
+      },
+      deviceStatus: deviceStatusSummary,
+      floodStatus: floodSummary,
+      lastSensorData: sensorData,
+      timestamp: new Date().toISOString()
+    });
+  } catch (error) {
+    res.status(500).json({
+      status: 'error',
+      error: error.message,
+      timestamp: new Date().toISOString()
+    });
+  }
 })
-
 
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('Shutting down gracefully...')
+  
+  // Stop device monitoring
+  deviceMonitoring.stop();
+  
+  // Close MQTT connection
   mqttClient.end()
+  
+  // Close server
   server.close(() => {
     console.log('Server closed')
     process.exit(0)
   })
 })
 
-// Jalankan server
+// Start server
 server.listen(port, () => {
   console.log(`Binatra Server listening on port ${port}`)
   console.log(`Health check available at: http://localhost:${port}/health`)
+  logger.info('Server started successfully', { 
+    port, 
+    mqttConfig: mqttConfig.host,
+    deviceMonitoring: {
+      heartbeatTimeout: deviceMonitoring.heartbeatTimeout,
+      checkInterval: deviceMonitoring.checkInterval
+    },
+    features: {
+      deviceMonitoring: true,
+      locationTracking: true,
+      floodDetection: true,
+      notifications: true // NEW FEATURE
+    }
+  })
 })

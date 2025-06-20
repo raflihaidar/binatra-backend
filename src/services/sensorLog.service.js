@@ -61,7 +61,7 @@ class SensorLogService {
   async getSensorLogsByDevice(deviceCode) {
     try {
       if (!deviceCode) {
-        throw new Error('Device ID is required');
+        throw new Error('Device Code is required');
       }
 
       logger.info(`Getting sensor logs for device ${deviceCode}`);
@@ -124,57 +124,6 @@ class SensorLogService {
       return await sensorLogRepository.getStatistics(deviceCode, start, end);
     } catch (error) {
       logger.error(`Error getting statistics for device ${deviceCode}:`, error);
-      throw error;
-    }
-  }
-
-  async getHourlyAverage(deviceCode, date) {
-    try {
-      if (!deviceCode || !date) {
-        throw new Error('Device ID and date are required');
-      }
-
-      const targetDate = new Date(date);
-      logger.info(`Getting hourly average for device ${deviceCode} on ${date}`);
-      return await sensorLogRepository.getHourlyAverage(deviceCode, targetDate);
-    } catch (error) {
-      logger.error(`Error getting hourly average for device ${deviceCode}:`, error);
-      throw error;
-    }
-  }
-
-  async getDailyAverage(deviceCode, month, year) {
-    try {
-      if (!deviceCode || !month || !year) {
-        throw new Error('Device ID, month, and year are required');
-      }
-
-      logger.info(`Getting daily average for device ${deviceCode} in ${month}/${year}`);
-      return await sensorLogRepository.getDailyAverage(deviceCode, parseInt(month), parseInt(year));
-    } catch (error) {
-      logger.error(`Error getting daily average for device ${deviceCode}:`, error);
-      throw error;
-    }
-  }
-
-  async getHighRainfallAlerts(threshold = 5.0, deviceCode = null) {
-    try {
-      const thresholdValue = parseFloat(threshold);
-      logger.info(`Getting high rainfall alerts with threshold ${thresholdValue}`, { deviceCode });
-      return await sensorLogRepository.findHighRainfall(thresholdValue, deviceCode);
-    } catch (error) {
-      logger.error('Error getting high rainfall alerts:', error);
-      throw error;
-    }
-  }
-
-  async getHighWaterLevelAlerts(threshold = 90.0, deviceCode = null) {
-    try {
-      const thresholdValue = parseFloat(threshold);
-      logger.info(`Getting high water level alerts with threshold ${thresholdValue}`, { deviceCode });
-      return await sensorLogRepository.findHighWaterLevel(thresholdValue, deviceCode);
-    } catch (error) {
-      logger.error('Error getting high water level alerts:', error);
       throw error;
     }
   }
@@ -246,16 +195,6 @@ class SensorLogService {
       return await sensorLogRepository.deleteBydeviceCode(deviceCode);
     } catch (error) {
       logger.error(`Error deleting sensor logs for device ${deviceCode}:`, error);
-      throw error;
-    }
-  }
-
-  async getSensorLogCount(deviceCode = null) {
-    try {
-      logger.info('Getting sensor log count', { deviceCode });
-      return await sensorLogRepository.getCount(deviceCode);
-    } catch (error) {
-      logger.error('Error getting sensor log count:', error);
       throw error;
     }
   }

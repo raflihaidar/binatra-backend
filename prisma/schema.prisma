@@ -10,38 +10,129 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id                  String           @id @default(uuid())
-  name                String           @unique @db.VarChar(100)
-  username            String           @unique @db.VarChar(20)
-  password            String?          @db.VarChar(100)
-  email               String           @unique @db.VarChar(100)
-  createdAt           DateTime         @default(now())
+enum DeviceStatus {
+  CONNECTED
+  DISCONNECTED
+}
 
+enum FloodStatus {
+  AMAN
+  WASPADA
+  SIAGA
+  BAHAYA
+}
+
+enum AlertLevel {
+  LOW
+  MEDIUM
+  HIGH
+  CRITICAL
+}
+
+model User {
+  id        String   @id @default(uuid())
+  name      String   @unique @db.VarChar(100)
+  username  String   @unique @db.VarChar(20)
+  password  String?  @db.VarChar(100)
+  email     String   @unique @db.VarChar(100)
+  createdAt DateTime @default(now())
 
   @@map("users")
 }
 
-model Device {
-  id         String           @id @default(uuid())
-  code       String           @unique @db.VarChar(100)
-  description String?          @db.Text
-  location   String?          @db.VarChar(200)
-  createdAt  DateTime         @default(now())
-  updatedAt  DateTime         @updatedAt
+model Location {
+  id        String   @id @default(uuid())
+  name      String   @db.VarChar(200)
+  address   String?  @db.Text // Full address
+  district  String?  @db.VarChar(100) // Kecamatan
+  city      String?  @db.VarChar(100) // Kota
+  province  String?  @db.VarChar(100) // Provinsi
+  latitude  Decimal? @db.Decimal(10, 8) // GPS coordinates
+  longitude Decimal? @db.Decimal(11, 8) // GPS coordinates
 
-  sensorLogs  SensorLog[]
+  amanMax    Float @default(0)
+  waspadaMin Float @default(0)
+  waspadaMax Float @default(0)
+  siagaMin   Float @default(0)
+  siagaMax   Float @default(0)
+  bahayaMin  Float @default(0)
+
+  currentStatus     FloodStatus @default(AMAN)
+  currentWaterLevel Float?      @default(0)
+  currentRainfall   Float?      @default(0)
+  lastUpdate        DateTime?
+
+  // Location management
+  isActive  Boolean  @default(true)
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  devices       Device[]
+  statusHistory LocationStatusHistory[]
+
+  @@index([name])
+  @@index([currentStatus])
+  @@index([isActive])
+  @@map("locations")
+}
+
+model Device {
+  id          String  @id @default(uuid())
+  code        String  @unique @db.VarChar(100)
+  description String? @db.Text
+  locationId  String
+
+  status   DeviceStatus @default(DISCONNECTED)
+  lastSeen DateTime?
+
+  // Metadata
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  // Relations
+  location   Location    @relation(fields: [locationId], references: [id])
+  sensorLogs SensorLog[]
+
+  @@index([status])
+  @@index([lastSeen])
+  @@index([locationId])
   @@map("devices")
 }
 
 model SensorLog {
-  id           String   @id @default(uuid())
-  deviceCode     String
-  timestamp    DateTime @default(now())
-  rainfall     Float? 
-  waterLevel   Float? 
-  device       Device   @relation(fields: [deviceCode], references: [code])
+  id         String   @id @default(uuid())
+  deviceCode String
+  timestamp  DateTime @default(now())
+  rainfall   Float? // mm/h - curah hujan
+  waterLevel Float? // cm - ketinggian air
 
-  @@map("sensor_logs")
+  // Relations
+  device Device @relation(fields: [deviceCode], references: [code], onDelete: Cascade)
+
   @@index([deviceCode, timestamp])
+  @@index([timestamp])
+  @@map("sensor_logs")
+}
+
+model LocationStatusHistory {
+  id         String @id @default(uuid())
+  locationId String
+
+  previousStatus FloodStatus
+  newStatus      FloodStatus
+  waterLevel     Float? // Water level at time of change (cm)
+  rainfall       Float? // Rainfall at time of change (mm/h)
+
+  changedAt DateTime @default(now())
+  duration  Int? // Duration in previous status (minutes)
+
+  // Additional context
+  notes String? @db.Text
+
+  // Relations
+  location Location @relation(fields: [locationId], references: [id])
+
+  @@index([locationId, changedAt])
+  @@map("location_status_history")
 }
