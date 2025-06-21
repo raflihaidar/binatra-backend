@@ -26,7 +26,7 @@ const app = express()
 const server = createServer(app)
 const io = setupSocket(server, () => sensorData)
 
-const port = process.env.APP_PORT || 8080
+const port = process.env.APP_PORT
 const mqttClient = mqtt.connect(mqttConfig)
 
 // Initialize device monitoring service
