@@ -3,20 +3,22 @@ import { locationController } from '../controllers/location.controller.js';
 
 export const router = express.Router();
 
-// Basic CRUD operations
-router.get('/', locationController.getAllLocations);
+// Static routes HARUS di atas sebelum dynamic routes
 router.get('/total', locationController.getTotalLocation);
 router.get('/location-status-history', locationController.getAllLocationStatusHistory);
-router.post('/', locationController.createLocation);
 router.get('/search', locationController.searchLocations);
-router.get('/:id', locationController.getLocationById);
 
-// Flood management routes
+// Flood management routes (static paths)
 router.get('/flood/warnings', locationController.getActiveFloodWarnings);
 router.get('/flood/summary', locationController.getFloodSummary);
 
-// Threshold management
-router.put('/:id/thresholds', locationController.updateThresholds);
+// Basic CRUD operations
+router.get('/', locationController.getAllLocations);
+router.post('/', locationController.createLocation);
 
-// Manual status update (for testing)
+// Dynamic routes HARUS di bawah (paling akhir)
+router.get('/:id', locationController.getLocationById);
+
+// PUT routes bisa di mana saja karena method berbeda
+router.put('/:id/thresholds', locationController.updateThresholds);
 router.put('/:id/status', locationController.forceUpdateStatus);
