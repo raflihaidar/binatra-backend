@@ -73,7 +73,9 @@ class DeviceController {
    */
   findDeviceByCode = async (req, res) => {
     try {
+
       const { code } = req.params;
+      console.log(" code yang diterima : ", code)
       
       if (!code) {
         return res.status(400).json({ 
@@ -83,6 +85,8 @@ class DeviceController {
       }
   
       const device = await deviceService.findByCode(code);
+
+      console.log("device yang ditemukan : ", device)
   
       return res.status(200).json({
         success: true,

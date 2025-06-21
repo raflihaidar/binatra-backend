@@ -82,35 +82,40 @@ class LocationService {
       if (!location) {
         throw new Error(`Location not found for device ${deviceCode}`);
       }
-
+  
       // 2. Calculate new flood status
       const newStatus = this.calculateFloodStatus(waterLevel, location);
       const previousStatus = location.currentStatus;
-
+  
       // 3. Update location current status
       const updatedLocation = await locationRepository.updateCurrentStatus(location.id, {
         currentStatus: newStatus,
         currentWaterLevel: waterLevel,
         currentRainfall: rainfall
       });
-
+  
+      let statusHistory = null;
+  
       // 4. Create status history if status changed
       if (previousStatus !== newStatus) {
-        await this.createStatusHistory(location.id, previousStatus, newStatus, waterLevel, rainfall);
-
+        statusHistory = await this.createStatusHistory(location.id, previousStatus, newStatus, waterLevel, rainfall);
+  
         logger.info(`Location status changed: ${location.name} from ${previousStatus} to ${newStatus}`, {
           locationId: location.id,
           deviceCode,
           waterLevel,
-          rainfall
+          rainfall,
+          historyId: statusHistory?.id
         });
       }
-
+  
       return {
         location: updatedLocation,
         statusChanged: previousStatus !== newStatus,
         previousStatus,
-        newStatus
+        newStatus,
+        statusHistory,  // ✅ TAMBAH: Return history data
+        duration: statusHistory?.duration || 0
       };
     } catch (error) {
       logger.error('Error in processSensorData service:', error);
@@ -156,8 +161,8 @@ class LocationService {
       const location = await locationRepository.findById(locationId);
       const duration = location.lastUpdate ?
         Math.floor((new Date() - new Date(location.lastUpdate)) / (1000 * 60)) : 0;
-
-      return await locationRepository.createStatusHistory({
+  
+      const historyData = {
         locationId,
         previousStatus,
         newStatus,
@@ -165,7 +170,25 @@ class LocationService {
         rainfall,
         duration,
         changedAt: new Date()
-      });
+      };
+  
+      const statusHistory = await locationRepository.createStatusHistory(historyData);
+  
+      // ✅ TAMBAH: Return history dengan data location untuk socket emission
+      return {
+        ...statusHistory,
+        location: {
+          id: location.id,
+          name: location.name,
+          address: location.address,
+          district: location.district
+        },
+        // Additional calculated fields for frontend
+        timeSinceUpdate: this.calculateTimeSince(statusHistory.changedAt),
+        statusColor: this.getStatusColor(newStatus),
+        previousStatusColor: this.getStatusColor(previousStatus),
+        isFloodStatus: ['WASPADA', 'SIAGA', 'BAHAYA'].includes(newStatus)
+      };
     } catch (error) {
       logger.error('Error creating status history:', error);
       throw error;

@@ -515,22 +515,22 @@ class DeviceRepository {
    * Get default location ID (for auto-created devices)
    * @returns {Promise<string>} Default location ID
    */
-  // async getDefaultLocationId() {
-  //   try {
-  //     const defaultLocation = await prisma.location.findFirst({
-  //       select: { id: true }
-  //     });
+  async getDefaultLocationId() {
+    try {
+      const defaultLocation = await prisma.location.findFirst({
+        select: { id: true }
+      });
       
-  //     if (!defaultLocation) {
-  //       throw new Error('No active location found. Please create a location first.');
-  //     }
+      if (!defaultLocation) {
+        throw new Error('No active location found. Please create a location first.');
+      }
       
-  //     return defaultLocation.id;
-  //   } catch (error) {
-  //     logger.error(`Error getting default location: ${error.message}`, error);
-  //     throw error;
-  //   }
-  // }
+      return defaultLocation.id;
+    } catch (error) {
+      logger.error(`Error getting default location: ${error.message}`, error);
+      throw error;
+    }
+  }
 }
 
 // Export singleton instance
