@@ -5,6 +5,23 @@ import logger from '../utils/logger.js';
  * Repository for handling location-related database operations
  */
 class LocationRepository {
+
+  /**
+   * Get all active locations
+   * @returns {Promise<Array>} List of active locations
+   */
+  async findAll() {
+    try {
+      return await prisma.location.findMany({
+        where: { isActive: true },
+        orderBy: { name: 'asc' }
+      });
+    } catch (error) {
+      logger.error('Error finding all locations:', error);
+      throw error;
+    }
+  }
+  
   /**
    * Create a new location
    * @param {Object} data - Location data
@@ -36,6 +53,86 @@ class LocationRepository {
   }
 
   /**
+ * Update location by ID
+ * @param {string} id - Location ID
+ * @param {Object} data - Update data
+ * @returns {Promise<Object>} Updated location
+ */
+  async update(id, data) {
+    try {
+      return await prisma.location.update({
+        where: { id },
+        data,
+        include: {
+          devices: true,
+          statusHistory: {
+            orderBy: { changedAt: 'desc' },
+            take: 5
+          }
+        }
+      });
+    } catch (error) {
+      if (error.code === 'P2025') {
+        const notFoundError = new Error('Location not found');
+        notFoundError.code = 'LOCATION_NOT_FOUND';
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+      logger.error('Error in update location repository:', error);
+      throw error;
+    }
+  }
+
+  /**
+ * Delete location by ID
+ * @param {string} id - Location ID
+ * @returns {Promise<Object>} Deleted location info
+ */
+  async delete(id) {
+    try {
+      // Get location info before deletion for response
+      const location = await prisma.location.findUnique({
+        where: { id },
+        include: {
+          devices: true,
+          statusHistory: true
+        }
+      });
+
+      if (!location) {
+        const error = new Error('Location not found');
+        error.code = 'LOCATION_NOT_FOUND';
+        error.statusCode = 404;
+        throw error;
+      }
+
+      // Delete the location (cascade will handle devices, statusHistory will be set to null)
+      await prisma.location.delete({
+        where: { id }
+      });
+
+      return {
+        message: 'Location deleted successfully',
+        deletedLocation: {
+          id: location.id,
+          name: location.name,
+          devicesCount: location.devices.length,
+          statusHistoryCount: location.statusHistory.length
+        }
+      };
+    } catch (error) {
+      if (error.code === 'P2025') {
+        const notFoundError = new Error('Location not found');
+        notFoundError.code = 'LOCATION_NOT_FOUND';
+        notFoundError.statusCode = 404;
+        throw notFoundError;
+      }
+      logger.error('Error in delete location repository:', error);
+      throw error;
+    }
+  }
+
+  /**
    * Find location by ID
    * @param {string} id - Location ID
    * @returns {Promise<Object|null>} Location or null
@@ -57,33 +154,87 @@ class LocationRepository {
   }
 
   /**
-   * Get all active locations
-   * @returns {Promise<Array>} List of active locations
+   * Get all active locations without any connected devices
+   * @returns {Promise<Array>} List of active locations without devices
    */
-  async findAll() {
+  async findLocationsWithoutDevices() {
     try {
       return await prisma.location.findMany({
-        where: { isActive: true },
-        include: {
-          _count: {
-            select: {
-              devices: { where: { isActive: true } }
-            }
+        where: {
+          isActive: true,
+          devices: {
+            none: {}
           }
         },
-        orderBy: { name: 'asc' }
+        orderBy: { name: 'asc' },
+        select: {
+          id: true,
+          name: true,
+          address: true,
+          district: true,
+          city: true,
+          province: true,
+          latitude: true,
+          longitude: true,
+          currentStatus: true,
+          currentWaterLevel: true,
+          currentRainfall: true,
+          lastUpdate: true,
+          createdAt: true,
+        }
       });
     } catch (error) {
-      logger.error('Error finding all locations:', error);
+      logger.error('Error finding locations without devices:', error);
       throw error;
     }
   }
 
-  async countLocation(){
+
+  /**
+ * Check if location exists by unique constraints
+ * @param {Object} criteria - Search criteria
+ * @returns {Promise<Object|null>} Existing location or null
+ */
+  async findByUniqueData(criteria) {
+    try {
+      const { name, city, district, latitude, longitude } = criteria;
+
+      // Check by name, city, district
+      if (name && city && district) {
+        const existingByName = await prisma.location.findFirst({
+          where: {
+            name,
+            city,
+            district
+          }
+        });
+        if (existingByName) return existingByName;
+      }
+
+      // Check by coordinates
+      if (latitude && longitude) {
+        const existingByCoords = await prisma.location.findFirst({
+          where: {
+            latitude,
+            longitude
+          }
+        });
+        if (existingByCoords) return existingByCoords;
+      }
+
+      return null;
+    } catch (error) {
+      logger.error('Error in findByUniqueData repository:', error);
+      throw error;
+    }
+  }
+
+
+  async countLocation() {
     try {
       return await prisma.location.count({
-        where : {
-          isActive : true
+        where: {
+          isActive: true
         }
       })
     } catch (error) {
@@ -177,12 +328,12 @@ class LocationRepository {
       sortBy = 'changedAt',
       sortOrder = 'desc'
     } = params;
-  
+
     const skip = (page - 1) * limit;
-  
+
     // Build where clause
     const whereClause = {};
-  
+
     // Exclude AMAN status kecuali jika specifically diminta
     if (status) {
       whereClause.OR = [
@@ -195,13 +346,13 @@ class LocationRepository {
         in: ['WASPADA', 'SIAGA', 'BAHAYA']
       };
     }
-  
+
     if (startDate || endDate) {
       whereClause.changedAt = {};
       if (startDate) whereClause.changedAt.gte = new Date(startDate);
       if (endDate) whereClause.changedAt.lte = new Date(endDate);
     }
-  
+
     try {
       // Get data with pagination
       const [data, total] = await Promise.all([
@@ -229,12 +380,12 @@ class LocationRepository {
           where: whereClause
         })
       ]);
-  
+
       // Calculate pagination metadata
       const totalPages = Math.ceil(total / limit);
       const hasNextPage = page < totalPages;
       const hasPreviousPage = page > 1;
-  
+
       return {
         success: true,
         data: data,
@@ -249,7 +400,7 @@ class LocationRepository {
           previousPage: hasPreviousPage ? page - 1 : null
         }
       };
-  
+
     } catch (error) {
       console.error('Error fetching location status history:', error);
       return {
@@ -275,7 +426,7 @@ class LocationRepository {
           location: true
         }
       });
-      
+
       return device ? device.location : null;
     } catch (error) {
       logger.error('Error finding location by device code:', error);

@@ -161,8 +161,9 @@ mqttClient.on('message', async (topic, message) => {
               previousStatus: previousStatus,
               newStatus: device.status,
               severity: device.status === 'CONNECTED' ? 'low' : 'medium',
-              location: json.location || 'Unknown Location',
-              timeframe: 'status berubah'
+              location: device.location.name || 'Unknown Location',
+              timeframe: 'status berubah',
+              data : device
             });
 
             emitNotification(notification);

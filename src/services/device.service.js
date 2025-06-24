@@ -23,11 +23,29 @@ class DeviceService {
      */
     async createDevice(data) {
         try {
+            // Check if device with same code already exists
+            const existingDevice = await deviceRepository.findByCode(data.code);
+
+            if (existingDevice) {
+                const error = new Error('Device with this code already exists');
+                error.code = 'DEVICE_EXISTS';
+                error.statusCode = 409;
+                error.details = {
+                    existingDevice: {
+                        id: existingDevice.id,
+                        code: existingDevice.code,
+                        description: existingDevice.description,
+                        location: existingDevice.location
+                    }
+                };
+                throw error;
+            }
+
             // If no locationId provided, get default location
             if (!data.locationId) {
                 data.locationId = await deviceRepository.getDefaultLocationId();
             }
-            
+
             return await deviceRepository.create(data);
         } catch (error) {
             logger.error('Error in createDevice service:', error);
@@ -63,7 +81,7 @@ class DeviceService {
         try {
             // Check if device exists first
             await this.findByCode(code);
-            
+
             return await deviceRepository.updateHeartbeat(code, timestamp);
         } catch (error) {
             logger.error('Error in updateHeartbeat service:', error);
@@ -135,9 +153,9 @@ class DeviceService {
     async checkAndUpdateOfflineDevices(timeoutMinutes = 5) {
         try {
             const potentiallyOfflineDevices = await deviceRepository.findPotentiallyOfflineDevices(timeoutMinutes);
-            
+
             const offlineDeviceCodes = potentiallyOfflineDevices.map(device => device.code);
-            
+
             if (offlineDeviceCodes.length > 0) {
                 await deviceRepository.bulkUpdateStatusToDisconnected(offlineDeviceCodes);
                 logger.info(`Marked ${offlineDeviceCodes.length} devices as DISCONNECTED due to timeout`, {
@@ -145,7 +163,7 @@ class DeviceService {
                     timeoutMinutes
                 });
             }
-            
+
             return potentiallyOfflineDevices;
         } catch (error) {
             logger.error('Error in checkAndUpdateOfflineDevices service:', error);
@@ -232,7 +250,7 @@ class DeviceService {
     async ensureDeviceExists(deviceData) {
         try {
             const { code, description, location } = deviceData;
-            
+
             // Try to find existing device
             try {
                 const existingDevice = await this.findByCode(code);
@@ -244,24 +262,24 @@ class DeviceService {
                 // Device doesn't exist, create new one
                 logger.info(`Device ${code} not found, creating new device`);
             }
-            
+
             // Get default location for new device
             const defaultLocationId = await deviceRepository.getDefaultLocationId();
-            
+
             // Create new device
             const newDevice = await this.createDevice({
                 code,
                 description: description || `Auto-created device ${code}`,
                 locationId: defaultLocationId
             });
-            
+
             logger.info(`New device created: ${code}`, {
                 deviceId: newDevice.id,
                 locationId: newDevice.locationId,
                 locationName: newDevice.location?.name
             });
             return newDevice;
-            
+
         } catch (error) {
             logger.error('Error in ensureDeviceExists service:', error);
             throw error;

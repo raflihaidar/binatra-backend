@@ -2,12 +2,35 @@ import { locationService } from '../services/location.service.js';
 import logger from '../utils/logger.js';
 
 class LocationController {
+
   /**
-   * Get all locations
-   */
-  getAllLocations = async (req, res) => {
+ * Get all locations
+ */
+  async getAllLocations(req, res) {
     try {
       const locations = await locationService.getAllLocations();
+
+      return res.status(200).json({
+        success: true,
+        message: 'Locations retrieved successfully',
+        data: locations
+      });
+    } catch (error) {
+      logger.error('Error getting locations:', error);
+      return res.status(500).json({
+        success: false,
+        message: 'Failed to get locations',
+        error: error.message
+      });
+    }
+  };
+
+  /**
+   * Get all locations without device
+   */
+  async getAllLocationsWithoutDevices(req, res) {
+    try {
+      const locations = await locationService.getAllLocationsWithoutDevices();
 
       return res.status(200).json({
         success: true,
@@ -148,6 +171,85 @@ class LocationController {
       });
     }
   };
+
+  /**
+ * Delete location
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+  async deleteLocation(req, res) {
+    try {
+      const { id } = req.params;
+
+      const result = await locationService.deleteLocation(id);
+
+      res.status(200).json({
+        success: true,
+        message: result.message,
+        data: result.deletedLocation
+      });
+    } catch (error) {
+      logger.error('Error in deleteLocation controller:', error);
+
+      if (error.code === 'LOCATION_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+          code: error.code
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
+
+  /**
+ * Update location
+ * @param {Object} req - Request object
+ * @param {Object} res - Response object
+ */
+  async updateLocation(req, res) {
+    try {
+      const { id } = req.params;
+      const updateData = req.body;
+
+      const updatedLocation = await locationService.updateLocation(id, updateData);
+
+      res.status(200).json({
+        success: true,
+        message: 'Location updated successfully',
+        data: updatedLocation
+      });
+    } catch (error) {
+      logger.error('Error in updateLocation controller:', error);
+
+      if (error.code === 'LOCATION_NOT_FOUND') {
+        return res.status(404).json({
+          success: false,
+          message: error.message,
+          code: error.code
+        });
+      }
+
+      if (error.code === 'LOCATION_EXISTS') {
+        return res.status(409).json({
+          success: false,
+          message: error.message,
+          code: error.code
+        });
+      }
+
+      res.status(500).json({
+        success: false,
+        message: 'Internal server error',
+        error: process.env.NODE_ENV === 'development' ? error.message : undefined
+      });
+    }
+  }
 
   /**
    * Get location by ID
@@ -378,7 +480,7 @@ class LocationController {
         message: 'Total locations retrieved successfully',
         total
       });
-      
+
     } catch (error) {
       logger.error('Error getting total locations:', error);
       return res.status(500).json({

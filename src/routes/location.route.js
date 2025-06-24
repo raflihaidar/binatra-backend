@@ -14,6 +14,7 @@ router.get('/flood/summary', locationController.getFloodSummary);
 
 // Basic CRUD operations
 router.get('/', locationController.getAllLocations);
+router.get('/without-devices', locationController.getAllLocationsWithoutDevices);
 router.post('/', locationController.createLocation);
 
 // Dynamic routes HARUS di bawah (paling akhir)
@@ -22,3 +23,8 @@ router.get('/:id', locationController.getLocationById);
 // PUT routes bisa di mana saja karena method berbeda
 router.put('/:id/thresholds', locationController.updateThresholds);
 router.put('/:id/status', locationController.forceUpdateStatus);
+
+// Update & Delete routes
+router.put('/:id', locationController.updateLocation);
+router.patch('/:id', locationController.updateLocation);
+router.delete('/:id', locationController.deleteLocation);

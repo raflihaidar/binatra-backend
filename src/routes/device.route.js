@@ -7,5 +7,5 @@ router.get('/', deviceController.getAllDevices);
 router.get('/status', deviceController.getStatusSummary);
 router.get('/:code', deviceController.findDeviceByCode);
 router.post('/', deviceController.createDevice);
-
-
+router.put('/:id', deviceController.updateDevice);
+router.delete('/:id', deviceController.deleteDevice);

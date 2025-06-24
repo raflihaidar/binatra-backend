@@ -332,6 +332,8 @@ class DeviceController {
    * Update device information
    */
   updateDevice = async (req, res) => {
+
+    console.log("data yang diterima oleh method update : ", req.body)
     try {
       const { id } = req.params;
       const updateData = req.body;

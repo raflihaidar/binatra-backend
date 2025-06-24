@@ -3,12 +3,25 @@ import logger from '../utils/logger.js';
 
 class LocationService {
   /**
-   * Get all locations
-   * @returns {Promise<Array>} List of locations
-   */
+ * Get all locations
+ * @returns {Promise<Array>} List of locations
+ */
   async getAllLocations() {
     try {
       return await locationRepository.findAll();
+    } catch (error) {
+      logger.error('Error in getAllLocations service:', error);
+      throw error;
+    }
+  }
+
+  /**
+   * Get all locations without device
+   * @returns {Promise<Array>} List of locations
+   */
+  async getAllLocationsWithoutDevices() {
+    try {
+      return await locationRepository.findLocationsWithoutDevices();
     } catch (error) {
       logger.error('Error in getAllLocations service:', error);
       throw error;
@@ -22,9 +35,68 @@ class LocationService {
    */
   async createLocation(data) {
     try {
+      const existingLocation = await locationRepository.findByUniqueData(data);
+
+      if (existingLocation) {
+        const error = new Error('Location already exists');
+        error.code = 'LOCATION_EXISTS';
+        error.statusCode = 409;
+        error.details = {
+          existingLocation: {
+            id: existingLocation.id,
+            name: existingLocation.name,
+            city: existingLocation.city,
+            district: existingLocation.district,
+            latitude: existingLocation.latitude,
+            longitude: existingLocation.longitude
+          }
+        };
+        throw error;
+      }
       return await locationRepository.create(data);
     } catch (error) {
       logger.error('Error in createLocation service:', error);
+      throw error;
+    }
+  }
+
+  /**
+  * Update location
+  * @param {string} id - Location ID
+  * @param {Object} data - Update data
+  * @returns {Promise<Object>} Updated location
+  */
+  async updateLocation(id, data) {
+    try {
+      // Check for duplicate if updating unique fields
+      if (data.name || data.city || data.district || data.latitude || data.longitude) {
+        const existingLocation = await locationRepository.findByUniqueData(data);
+
+        if (existingLocation && existingLocation.id !== id) {
+          const error = new Error('Location with this data already exists');
+          error.code = 'LOCATION_EXISTS';
+          error.statusCode = 409;
+          throw error;
+        }
+      }
+
+      return await locationRepository.update(id, data);
+    } catch (error) {
+      logger.error('Error in updateLocation service:', error);
+      throw error;
+    }
+  }
+
+  /**
+ * Delete location
+ * @param {string} id - Location ID
+ * @returns {Promise<Object>} Delete result
+ */
+  async deleteLocation(id) {
+    try {
+      return await locationRepository.delete(id);
+    } catch (error) {
+      logger.error('Error in deleteLocation service:', error);
       throw error;
     }
   }
@@ -82,24 +154,24 @@ class LocationService {
       if (!location) {
         throw new Error(`Location not found for device ${deviceCode}`);
       }
-  
+
       // 2. Calculate new flood status
       const newStatus = this.calculateFloodStatus(waterLevel, location);
       const previousStatus = location.currentStatus;
-  
+
       // 3. Update location current status
       const updatedLocation = await locationRepository.updateCurrentStatus(location.id, {
         currentStatus: newStatus,
         currentWaterLevel: waterLevel,
         currentRainfall: rainfall
       });
-  
+
       let statusHistory = null;
-  
+
       // 4. Create status history if status changed
       if (previousStatus !== newStatus) {
         statusHistory = await this.createStatusHistory(location.id, previousStatus, newStatus, waterLevel, rainfall);
-  
+
         logger.info(`Location status changed: ${location.name} from ${previousStatus} to ${newStatus}`, {
           locationId: location.id,
           deviceCode,
@@ -108,7 +180,7 @@ class LocationService {
           historyId: statusHistory?.id
         });
       }
-  
+
       return {
         location: updatedLocation,
         statusChanged: previousStatus !== newStatus,
@@ -161,7 +233,7 @@ class LocationService {
       const location = await locationRepository.findById(locationId);
       const duration = location.lastUpdate ?
         Math.floor((new Date() - new Date(location.lastUpdate)) / (1000 * 60)) : 0;
-  
+
       const historyData = {
         locationId,
         previousStatus,
@@ -171,9 +243,9 @@ class LocationService {
         duration,
         changedAt: new Date()
       };
-  
+
       const statusHistory = await locationRepository.createStatusHistory(historyData);
-  
+
       // ✅ TAMBAH: Return history dengan data location untuk socket emission
       return {
         ...statusHistory,
@@ -255,42 +327,42 @@ class LocationService {
   /**
  * Validate parameters for getAllLocationStatusHistory
  */
-validateGetAllParams(params) {
-  const {
-    page = 1,
-    limit = 10,
-    status = null,
-    startDate = null,
-    endDate = null,
-    sortBy = 'changedAt',
-    sortOrder = 'desc'
-  } = params;
+  validateGetAllParams(params) {
+    const {
+      page = 1,
+      limit = 10,
+      status = null,
+      startDate = null,
+      endDate = null,
+      sortBy = 'changedAt',
+      sortOrder = 'desc'
+    } = params;
 
-  // Validate pagination
-  const validPage = Math.max(1, parseInt(page) || 1);
-  const validLimit = Math.min(100, Math.max(1, parseInt(limit) || 10));
+    // Validate pagination
+    const validPage = Math.max(1, parseInt(page) || 1);
+    const validLimit = Math.min(100, Math.max(1, parseInt(limit) || 10));
 
-  // Validate sort parameters
-  const validSortFields = ['changedAt', 'previousStatus', 'newStatus', 'waterLevel', 'rainfall', 'duration'];
-  const validSortOrders = ['asc', 'desc'];
-  
-  const validSortBy = validSortFields.includes(sortBy) ? sortBy : 'changedAt';
-  const validSortOrder = validSortOrders.includes(sortOrder?.toLowerCase()) ? sortOrder.toLowerCase() : 'desc';
+    // Validate sort parameters
+    const validSortFields = ['changedAt', 'previousStatus', 'newStatus', 'waterLevel', 'rainfall', 'duration'];
+    const validSortOrders = ['asc', 'desc'];
 
-  // Validate status
-  const validStatuses = ['AMAN', 'WASPADA', 'SIAGA', 'BAHAYA'];
-  const validStatus = validStatuses.includes(status) ? status : null;
+    const validSortBy = validSortFields.includes(sortBy) ? sortBy : 'changedAt';
+    const validSortOrder = validSortOrders.includes(sortOrder?.toLowerCase()) ? sortOrder.toLowerCase() : 'desc';
 
-  return {
-    page: validPage,
-    limit: validLimit,
-    status: validStatus,
-    startDate,
-    endDate,
-    sortBy: validSortBy,
-    sortOrder: validSortOrder
-  };
-}
+    // Validate status
+    const validStatuses = ['AMAN', 'WASPADA', 'SIAGA', 'BAHAYA'];
+    const validStatus = validStatuses.includes(status) ? status : null;
+
+    return {
+      page: validPage,
+      limit: validLimit,
+      status: validStatus,
+      startDate,
+      endDate,
+      sortBy: validSortBy,
+      sortOrder: validSortOrder
+    };
+  }
 
 
 

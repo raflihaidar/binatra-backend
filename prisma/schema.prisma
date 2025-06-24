@@ -1,6 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -71,6 +68,8 @@ model Location {
   devices       Device[]
   statusHistory LocationStatusHistory[]
 
+  @@unique([name, city, district])
+  @@unique([latitude, longitude])
   @@index([name])
   @@index([currentStatus])
   @@index([isActive])
@@ -91,7 +90,7 @@ model Device {
   updatedAt DateTime @updatedAt
 
   // Relations
-  location   Location    @relation(fields: [locationId], references: [id])
+  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
   sensorLogs SensorLog[]
 
   @@index([status])
@@ -117,7 +116,7 @@ model SensorLog {
 
 model LocationStatusHistory {
   id         String @id @default(uuid())
-  locationId String
+  locationId String?
 
   previousStatus FloodStatus
   newStatus      FloodStatus
@@ -131,7 +130,7 @@ model LocationStatusHistory {
   notes String? @db.Text
 
   // Relations
-  location Location @relation(fields: [locationId], references: [id])
+  location Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
 
   @@index([locationId, changedAt])
   @@map("location_status_history")

@@ -149,6 +149,7 @@ class DeviceRepository {
    * @returns {Promise<Object>} Updated device
    */
   async update(id, data) {
+    console.log("data yang diterima oleh method update : ", data)
     try {
       return await prisma.device.update({
         where: { id },
