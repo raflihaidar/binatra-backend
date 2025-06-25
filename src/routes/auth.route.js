@@ -16,10 +16,12 @@ export const router = express.Router();
 // Middleware untuk parsing cookies
 router.use(cookieParser());
 
+router.get('/me', authenticateToken, getCurrentUser);
+
+
 // Public routes
 router.post('/register', redirectIfAuthenticated, registerController);
 router.post('/login', redirectIfAuthenticated, loginController);
 
 // Protected routes
 router.post('/logout', authenticateToken, logoutController);
-router.get('/profile', authenticateToken, getCurrentUser);
