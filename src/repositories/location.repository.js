@@ -454,7 +454,6 @@ class LocationRepository {
         waspada,
         siaga,
         bahaya,
-        flooding: waspada + siaga + bahaya
       };
     } catch (error) {
       logger.error('Error getting flood summary:', error);
