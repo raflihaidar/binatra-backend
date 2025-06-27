@@ -65,7 +65,7 @@ model Location {
   updatedAt DateTime @updatedAt
 
   // Relations
-  devices       Device[]
+  device        Device?
   statusHistory LocationStatusHistory[]
 
   @@unique([name, city, district])
@@ -80,7 +80,7 @@ model Device {
   id          String  @id @default(uuid())
   code        String  @unique @db.VarChar(100)
   description String? @db.Text
-  locationId  String
+  locationId  String  @unique
 
   status   DeviceStatus @default(DISCONNECTED)
   lastSeen DateTime?
@@ -90,7 +90,7 @@ model Device {
   updatedAt DateTime @updatedAt
 
   // Relations
-  location Location @relation(fields: [locationId], references: [id], onDelete: Cascade)
+  location   Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
   sensorLogs SensorLog[]
 
   @@index([status])
@@ -115,7 +115,7 @@ model SensorLog {
 }
 
 model LocationStatusHistory {
-  id         String @id @default(uuid())
+  id         String  @id @default(uuid())
   locationId String?
 
   previousStatus FloodStatus
