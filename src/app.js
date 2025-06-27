@@ -7,6 +7,7 @@ import cookieParser from 'cookie-parser';
 import { createServer } from 'http'
 import { setupSocket } from './config/socket.js'
 import { mqttConfig } from './config/mqtt.js'
+import { corsOptions } from './config/cors.js'
 import { router as auth_routes } from './routes/auth.route.js'
 import { router as weather_routes } from './routes/weather.route.js'
 import { router as device_routes } from './routes/device.route.js'
@@ -41,38 +42,6 @@ const socketManager = new SocketConnectionManager(io, deviceMonitoring, notifica
 
 const port = process.env.APP_PORT
 const mqttClient = mqtt.connect(mqttConfig)
-
-// 1. CORS Configuration - HARUS SEBELUM ROUTES
-const corsOptions = {
-  origin: function (origin, callback) {
-    const allowedOrigins = [
-      'http://localhost:5173',  // Vite dev server
-      'http://localhost:3000',  // Backend dev
-      'http://127.0.0.1:5173',  // Alternative localhost
-      'https://binatra.id',     // Production
-      'https://www.binatra.id'  // Production with www
-    ]
-    
-    // Allow requests with no origin (Postman, mobile apps)
-    if (!origin) return callback(null, true)
-    
-    if (allowedOrigins.includes(origin)) {
-      callback(null, true)
-    } else {
-      callback(new Error(`Origin ${origin} not allowed by CORS`))
-    }
-  },
-  credentials: true,  // CRUCIAL for cookies
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: [
-    'Content-Type', 
-    'Authorization', 
-    'X-Requested-With',
-    'Accept',
-    'Origin'
-  ],
-  optionsSuccessStatus: 200
-}
 
 app.use(cors(corsOptions))
 app.use(express.json())
