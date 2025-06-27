@@ -64,7 +64,7 @@ class LocationRepository {
         where: { id },
         data,
         include: {
-          devices: true,
+          device : true,
           statusHistory: {
             orderBy: { changedAt: 'desc' },
             take: 5
@@ -94,7 +94,7 @@ class LocationRepository {
       const location = await prisma.location.findUnique({
         where: { id },
         include: {
-          devices: true,
+          device: true,
           statusHistory: true
         }
       });
@@ -116,7 +116,6 @@ class LocationRepository {
         deletedLocation: {
           id: location.id,
           name: location.name,
-          devicesCount: location.devices.length,
           statusHistoryCount: location.statusHistory.length
         }
       };
@@ -142,7 +141,7 @@ class LocationRepository {
       return await prisma.location.findUnique({
         where: { id },
         include: {
-          devices: {
+          device: {
             select: { code: true, status: true, lastSeen: true }
           }
         }
@@ -162,7 +161,7 @@ class LocationRepository {
       return await prisma.location.findMany({
         where: {
           isActive: true,
-          devices: {
+          device: {
             none: {}
           }
         },

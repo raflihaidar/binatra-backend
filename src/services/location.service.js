@@ -82,7 +82,9 @@ class LocationService {
 
       const newLocatinData = await locationRepository.update(id, data);
 
-      this.processSensorData(newLocatinData.devices[0].code, newLocatinData.currentWaterLevel, newLocatinData.currentRainfall)
+      console.log("hasil update : ", newLocatinData)
+
+      this.processSensorData(newLocatinData.device.code, newLocatinData.currentWaterLevel, newLocatinData.currentRainfall)
 
       return newLocatinData
     } catch (error) {
