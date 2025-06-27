@@ -80,7 +80,11 @@ class LocationService {
         }
       }
 
-      return await locationRepository.update(id, data);
+      const newLocatinData = await locationRepository.update(id, data);
+
+      this.processSensorData(newLocatinData.devices[0].code, newLocatinData.currentWaterLevel, newLocatinData.currentRainfall)
+
+      return newLocatinData
     } catch (error) {
       logger.error('Error in updateLocation service:', error);
       throw error;
@@ -127,13 +131,7 @@ class LocationService {
     try {
       const locations = await locationRepository.findActiveFloodLocations();
 
-      // Add calculated fields for frontend
-      return locations.map(location => ({
-        ...location,
-        timeSinceUpdate: this.calculateTimeSince(location.lastUpdate),
-        statusColor: this.getStatusColor(location.currentStatus),
-        progressPercentage: this.calculateProgress(location.currentWaterLevel, location.bahayaMin) // Updated to use bahayaMin
-      }));
+      return locations
     } catch (error) {
       logger.error('Error in getActiveFloodWarnings service:', error);
       throw error;
@@ -151,6 +149,7 @@ class LocationService {
     try {
       // 1. Get location by device code
       const location = await locationRepository.findByDeviceCode(deviceCode);
+
       if (!location) {
         throw new Error(`Location not found for device ${deviceCode}`);
       }
