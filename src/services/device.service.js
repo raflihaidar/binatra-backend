@@ -270,7 +270,7 @@ class DeviceService {
             const newDevice = await this.createDevice({
                 code,
                 description: description || `Auto-created device ${code}`,
-                locationId: defaultLocationId
+                locationId: location
             });
 
             logger.info(`New device created: ${code}`, {
