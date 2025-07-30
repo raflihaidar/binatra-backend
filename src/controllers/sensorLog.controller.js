@@ -23,7 +23,7 @@ class SensorLogController {
 
   createSensorLog = async (req, res) => {
     try {
-      const {deviceCode, deviceCalibration, depth, rainfall, waterLevel} = req.body
+      const {deviceCode, deviceCalibration, depth, voltage, rainfall, waterLevel} = req.body
 
       if(!deviceCode){
         return res.status(400).json({ 
@@ -36,6 +36,7 @@ class SensorLogController {
         deviceCode,
         deviceCalibration, 
         depth, 
+        voltage,
         rainfall, 
         waterLevel
       });
@@ -135,8 +136,6 @@ class SensorLogController {
   }
 
   getLatestReading = async (req, res) => {
-    console.log("device code : ", req.params)
-
     try {
       const { deviceId } = req.params;
 

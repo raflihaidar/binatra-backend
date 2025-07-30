@@ -7,6 +7,7 @@ class SensorLogRepository {
         deviceCode: data.deviceCode,
         deviceCalibration : data.deviceCalibration,
         depth : data.depth,
+        voltage : data.voltage,
         rainfall: data.rainfall,
         waterLevel: data.waterLevel,
         timestamp: data.timestamp || new Date()
@@ -23,6 +24,7 @@ class SensorLogRepository {
         deviceCode: data.deviceCode,
         deviceCalibration : data.deviceCalibration,
         depth : data.depth,
+        voltage : data.voltage,
         rainfall: data.rainfall,
         waterLevel: data.waterLevel,
         timestamp: data.timestamp || new Date()
@@ -137,6 +139,7 @@ class SensorLogRepository {
       data: {
         deviceCalibration : data.deviceCalibration,
         depth : data.depth,
+        voltage : data.voltage,
         rainfall: data.rainfall,
         waterLevel: data.waterLevel,
         timestamp: data.timestamp
@@ -189,7 +192,6 @@ class SensorLogRepository {
   }
 
   async getLatestReading(deviceCode) {
-    console.log("device code : ", deviceCode)
     return await prisma.sensorLog.findFirst({
       where: {
         deviceCode
