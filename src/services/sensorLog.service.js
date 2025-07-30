@@ -19,6 +19,7 @@ class SensorLogService {
         deviceCode: data.deviceCode,
         deviceCalibration : data.deviceCalibration,
         depth : data.depth,
+        voltage : data.voltage,
         rainfall: data.rainfall !== undefined ? parseFloat(data.rainfall) : null,
         waterLevel: data.waterLevel !== undefined ? parseFloat(data.waterLevel) : null,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
@@ -48,6 +49,7 @@ class SensorLogService {
           deviceCode: log.deviceCode,
           deviceCalibration : data.deviceCalibration,
           depth : data.depth,
+          voltage : data.voltage,
           rainfall: log.rainfall !== undefined ? parseFloat(log.rainfall) : null,
           waterLevel: log.waterLevel !== undefined ? parseFloat(log.waterLevel) : null,
           timestamp: log.timestamp ? new Date(log.timestamp) : new Date()
@@ -161,6 +163,11 @@ class SensorLogService {
 
       if (updateData.depth !== undefined) {
         data.depth = parseFloat(updateData.depth);
+      }
+
+
+      if (updateData.voltage !== undefined) {
+        data.voltage = parseFloat(updateData.voltage);
       }
       
       if (updateData.rainfall !== undefined) {

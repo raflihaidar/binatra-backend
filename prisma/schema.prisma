@@ -101,6 +101,7 @@ model SensorLog {
   rainfall    Float    @default(0) // mm/h - curah hujan
   waterLevel  Float    @default(0) // cm - ketinggian air
   depth       Float    @default(0) //cm
+  voltage     Float    @default(0)
   timestamp   DateTime @default(now())
 
   // Relations

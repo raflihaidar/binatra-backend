@@ -27,12 +27,14 @@ export class SensorDataHandler {
       const rainfall = json.rainfall_mm || json.rainfall || json.rain || null;
       const deviceCalibration = json.deviceCalibration || null;
       const depth = json.depth || null;
+      const voltage = json.voltage || null;
 
       const sensorData = {
         deviceCode: sensorDeviceCode,
         waterlevel: waterLevel,
         deviceCalibration,
         depth,
+        voltage,
         waterLevel,
         rainfall,
         timestamp,
@@ -94,11 +96,12 @@ export class SensorDataHandler {
       deviceCode,
       deviceCalibration,
       depth,
+      voltage,
       rainfall,
       waterLevel,
     } = sensorData;
 
-    if (waterLevel === null || rainfall === null || deviceCode == null || deviceCalibration == null || depth == null) {
+    if (waterLevel === null || rainfall === null || deviceCode == null || deviceCalibration == null || depth == null || voltage == null) {
       return { saved: false, reason: "No valid sensor data to save" };
     }
 
