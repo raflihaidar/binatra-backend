@@ -5,6 +5,8 @@ class SensorLogRepository {
     return await prisma.sensorLog.create({
       data: {
         deviceCode: data.deviceCode,
+        deviceCalibration : data.deviceCalibration,
+        depth : data.depth,
         rainfall: data.rainfall,
         waterLevel: data.waterLevel,
         timestamp: data.timestamp || new Date()
@@ -19,6 +21,8 @@ class SensorLogRepository {
     return await prisma.sensorLog.createMany({
       data: dataArray.map(data => ({
         deviceCode: data.deviceCode,
+        deviceCalibration : data.deviceCalibration,
+        depth : data.depth,
         rainfall: data.rainfall,
         waterLevel: data.waterLevel,
         timestamp: data.timestamp || new Date()
@@ -131,6 +135,8 @@ class SensorLogRepository {
         id
       },
       data: {
+        deviceCalibration : data.deviceCalibration,
+        depth : data.depth,
         rainfall: data.rainfall,
         waterLevel: data.waterLevel,
         timestamp: data.timestamp

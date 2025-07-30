@@ -12,6 +12,8 @@ class DeviceRepository {
    * @param {string} data.code - Device code
    * @param {string} data.locationId - Location ID (required)
    * @param {string} [data.description] - Device description (optional)
+   * @param {string} [data.calibration] - Device periode (optional)
+   * @param {string} [data.periode] - Device periode (optional)
    * @returns {Promise<Object>} Created device
    */
   async create(data) {
@@ -21,7 +23,9 @@ class DeviceRepository {
           code: data.code,
           locationId: data.locationId,
           description: data.description,
-          status: 'DISCONNECTED', // Default status
+          status: 'DISCONNECTED',
+          calibration : data.calibration,
+          periode : data.periode,
           lastSeen: null,
         },
         include: {
@@ -31,7 +35,6 @@ class DeviceRepository {
         }
       });
     } catch (error) {
-      console.log(error)
       if (error instanceof Prisma.PrismaClientKnownRequestError) {
         if (error.code === 'P2002') {
           // Duplicate unique field
@@ -145,11 +148,15 @@ class DeviceRepository {
   /**
    * Update device details
    * @param {string} id - Device UUID
-   * @param {Object} data - Updated device data
+   * @param {Object} data - Device data
+   * @param {string} data.code - Device code
+   * @param {string} data.locationId - Location ID (required)
+   * @param {string} [data.description] - Device description (optional)
+   * @param {string} [data.calibration] - Device periode (optional)
+   * @param {string} [data.periode] - Device periode (optional)
    * @returns {Promise<Object>} Updated device
    */
   async update(id, data) {
-    console.log("data yang diterima oleh method update : ", data)
     try {
       return await prisma.device.update({
         where: { id },
@@ -157,6 +164,8 @@ class DeviceRepository {
           code: data.code,
           locationId: data.locationId,
           description: data.description,
+          calibration : data.calibration,
+          periode : data.periode
         },
         include: {
           location: {

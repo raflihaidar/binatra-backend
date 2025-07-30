@@ -25,7 +25,6 @@ export class SocketConnectionManager {
     this.stats.currentConnections++;
     this.stats.peakConnections = Math.max(this.stats.peakConnections, this.stats.currentConnections);
 
-    console.log('Client connected:', socket.id);
     logger.info('New socket connection', {
       socketId: socket.id,
       currentConnections: this.stats.currentConnections,
@@ -104,7 +103,6 @@ export class SocketConnectionManager {
     // Device status subscriptions
     socket.on('subscribe-device-status', (deviceCode) => {
       socket.join(`device-status-${deviceCode}`);
-      console.log(`Client ${socket.id} subscribed to device status ${deviceCode}`);
       
       logger.debug('Device status subscription', {
         socketId: socket.id,

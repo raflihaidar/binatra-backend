@@ -30,7 +30,9 @@ export class DeviceCheckHandler {
       const device = await deviceController.ensureDeviceExists({
         code: checkDeviceCode,
         description: json.description || `Auto-created device with code ${checkDeviceCode}`,
-        location: json.location || 'Unknown Location'
+        location: json.location || null,
+        calibration : json.calibration || 0,
+        periode : json.periode || 0
       });
 
       const isNewDevice = !device;
@@ -41,7 +43,7 @@ export class DeviceCheckHandler {
           title: `New Device Registered: ${checkDeviceCode}`,
           deviceCode: checkDeviceCode,
           severity: 'low',
-          location: json.location || 'Unknown Location',
+          location: json.location || 0,
           timeframe: 'baru terdaftar'
         });
 

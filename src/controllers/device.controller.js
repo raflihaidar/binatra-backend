@@ -37,7 +37,7 @@ class DeviceController {
    */
   createDevice = async (req, res) => {
     try {
-      const { code, locationId, description } = req.body;
+      const { code, locationId, description, calibration, periode } = req.body;
   
       if (!code) {
         return res.status(400).json({ 
@@ -50,7 +50,8 @@ class DeviceController {
         code, 
         locationId, 
         description,
-     
+        calibration,
+        periode
       });
   
       return res.status(201).json({
@@ -75,7 +76,6 @@ class DeviceController {
     try {
 
       const { code } = req.params;
-      console.log(" code yang diterima : ", code)
       
       if (!code) {
         return res.status(400).json({ 
@@ -332,8 +332,6 @@ class DeviceController {
    * Update device information
    */
   updateDevice = async (req, res) => {
-
-    console.log("data yang diterima oleh method update : ", req.body)
     try {
       const { id } = req.params;
       const updateData = req.body;

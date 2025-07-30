@@ -19,13 +19,6 @@ enum FloodStatus {
   BAHAYA
 }
 
-enum AlertLevel {
-  LOW
-  MEDIUM
-  HIGH
-  CRITICAL
-}
-
 model User {
   id        String   @id @default(uuid())
   name      String   @unique @db.VarChar(100)
@@ -38,7 +31,7 @@ model User {
 }
 
 model Location {
-  id        String   @id @default(uuid())
+  id        Int      @id @default(autoincrement())
   name      String   @db.VarChar(200)
   address   String?  @db.Text // Full address
   district  String?  @db.VarChar(100) // Kecamatan
@@ -80,10 +73,12 @@ model Device {
   id          String  @id @default(uuid())
   code        String  @unique @db.VarChar(100)
   description String? @db.Text
-  locationId  String  @unique
+  locationId  Int     @unique
 
-  status   DeviceStatus @default(DISCONNECTED)
-  lastSeen DateTime?
+  status      DeviceStatus @default(DISCONNECTED)
+  calibration Float        @default(0)
+  periode     Int          @default(60)
+  lastSeen    DateTime?
 
   // Metadata
   createdAt DateTime @default(now())
@@ -100,11 +95,13 @@ model Device {
 }
 
 model SensorLog {
-  id         String   @id @default(uuid())
-  deviceCode String
-  timestamp  DateTime @default(now())
-  rainfall   Float? // mm/h - curah hujan
-  waterLevel Float? // cm - ketinggian air
+  id          String   @id @default(uuid())
+  deviceCode  String
+  deviceCalibration Float     @default(0)
+  rainfall    Float    @default(0) // mm/h - curah hujan
+  waterLevel  Float    @default(0) // cm - ketinggian air
+  depth       Float    @default(0) //cm
+  timestamp   DateTime @default(now())
 
   // Relations
   device Device @relation(fields: [deviceCode], references: [code], onDelete: Cascade)
@@ -115,8 +112,8 @@ model SensorLog {
 }
 
 model LocationStatusHistory {
-  id         String  @id @default(uuid())
-  locationId String?
+  id         String @id @default(uuid())
+  locationId Int?
 
   previousStatus FloodStatus
   newStatus      FloodStatus

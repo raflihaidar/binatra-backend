@@ -17,22 +17,15 @@ import { DeviceMonitoringService } from './services/deviceMonitoring.service.js'
 import { MqttMessageRouter } from './routes/mqtt.route.js'
 import { NotificationEmitter } from './services/notificationEmitter.service.js'
 import { SocketConnectionManager } from './handlers/socket/socketConnectionManager.js'
-import logger from './utils/logger.js'
+import logger from './logger/index.js'
+import { setupSocketHandler } from './handlers/socket/index.js'
 
 dotenv.config()
 
 const app = express()
 const server = createServer(app)
 
-let sensorData = {
-  deviceId: null,
-  waterlevel: null,
-  rainfall: null,
-  timestamp: null,
-  lastUpdate: null
-}
-
-const io = setupSocket(server, () => sensorData)
+const io = setupSocket(server, () => null)
 
 // Initialize services
 const deviceMonitoring = new DeviceMonitoringService(io)
@@ -66,17 +59,17 @@ mqttClient.on('connect', () => {
   const topics = [
     'binatra-device/+/heartbeat',  // Device heartbeat: binatra-device/{deviceCode}/heartbeat
     'binatra-device/+/sensor',     // Device sensor data: binatra-device/{deviceCode}/sensor
+    'binatra-device/+/settings',     // Device sensor data: binatra-device/{deviceCode}/sensor
     'binatra-device/sensor',       // Legacy sensor topic
-    'binatra-device/check/device'  // Device check topic
+    'binatra-device/check/device',  // Device check topic
+    'binatra-device/settings'  // Device check topic
   ]
 
   mqttClient.subscribe(topics, (err) => {
     if (!err) {
-      console.log('Subscribed to:', topics.join(', '))
-      logger.info('MQTT topics subscribed successfully', { topics })
+      logger.info({ topics }, `Subscribed to: ${topics.join(', ')}`)
     } else {
-      console.error('MQTT subscribe error:', err)
-      logger.error('MQTT subscribe error:', err)
+      logger.error({err}, 'MQTT subscribe error')
     }
   })
 })
@@ -85,11 +78,6 @@ mqttClient.on('connect', () => {
 mqttClient.on('message', async (topic, message) => {
   try {
     const result = await mqttRouter.routeMessage(topic, message)
-    
-    // Update global sensor data if it's sensor data
-    if (result.success && result.sensorData) {
-      sensorData = result.sensorData
-    }
 
     logger.debug('MQTT message processed successfully', {
       topic,
@@ -112,13 +100,14 @@ mqttClient.on('message', async (topic, message) => {
 // MQTT Error Handlers
 mqttClient.on('error', (error) => {
   console.error('MQTT Client Error:', error)
-  logger.error('MQTT Client Error:', error)
+  // logger.error('MQTT Client Error:', error)
   notificationEmitter.emitSystemNotification('error', 'MQTT Connection Error', { error: error.message })
 })
 
+
 mqttClient.on('close', () => {
   console.log('MQTT connection closed')
-  logger.warn('MQTT connection closed')
+  // logger.warn('MQTT connection closed')
   
   // Stop device monitoring when MQTT disconnects
   deviceMonitoring.stop()
@@ -127,19 +116,16 @@ mqttClient.on('close', () => {
 
 mqttClient.on('reconnect', () => {
   console.log('MQTT reconnecting...')
-  logger.info('MQTT reconnecting...')
+  // logger.info('MQTT reconnecting...')
   notificationEmitter.emitSystemNotification('info', 'MQTT Reconnecting...')
 })
 
-// Socket.IO Connection Handler using Manager
-io.on('connection', (socket) => {
-  socketManager.handleConnection(socket)
-})
+setupSocketHandler(io, socketManager)
 
 // Health Check Endpoint
 app.get('/health', async (req, res) => {
   try {
-    const [deviceStatusSummary, floodSummary, notificationStats] = await Promise.all([
+    const [notificationStats] = await Promise.all([
       deviceMonitoring.getStatusSummary(),
       // locationService.getFloodSummary(), // You'll need to import this if still needed
       Promise.resolve({}), // Placeholder for flood summary
@@ -168,11 +154,6 @@ app.get('/health', async (req, res) => {
           connectedClients: io.engine.clientsCount,
           activeRooms: notificationEmitter.getActiveRooms().length
         }
-      },
-      data: {
-        deviceStatus: deviceStatusSummary,
-        floodStatus: floodSummary,
-        lastSensorData: sensorData
       }
     }
 
@@ -189,67 +170,6 @@ app.get('/health', async (req, res) => {
   }
 })
 
-// Additional API endpoints for monitoring
-app.get('/api/v1/system/stats', async (req, res) => {
-  try {
-    const stats = {
-      mqtt: {
-        connected: mqttClient.connected,
-        topics: mqttRouter.getRoutingStats()
-      },
-      notifications: notificationEmitter.getStats(),
-      socket: {
-        connectedClients: io.engine.clientsCount,
-        activeRooms: notificationEmitter.getActiveRooms()
-      },
-      deviceMonitoring: await deviceMonitoring.getStatusSummary(),
-      timestamp: new Date().toISOString()
-    }
-
-    res.json(stats)
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
-app.get('/api/v1/system/health-detailed', async (req, res) => {
-  try {
-    const health = {
-      services: {
-        express: { status: 'running', port },
-        mqtt: { 
-          status: mqttClient.connected ? 'connected' : 'disconnected',
-          config: mqttConfig.host 
-        },
-        socketio: { 
-          status: 'running',
-          clients: io.engine.clientsCount 
-        },
-        deviceMonitoring: {
-          status: deviceMonitoring.intervalId ? 'active' : 'inactive',
-          config: {
-            heartbeatTimeout: deviceMonitoring.heartbeatTimeout,
-            checkInterval: deviceMonitoring.checkInterval
-          }
-        }
-      },
-      features: {
-        deviceMonitoring: true,
-        locationTracking: true,
-        floodDetection: true,
-        notifications: true,
-        mqttRouting: true,
-        socketManagement: true
-      },
-      timestamp: new Date().toISOString()
-    }
-
-    res.json(health)
-  } catch (error) {
-    res.status(500).json({ error: error.message })
-  }
-})
-
 // Graceful Shutdown Handler
 const gracefulShutdown = (signal) => {
   console.log(`\n${signal} received. Shutting down gracefully...`)
@@ -258,24 +178,24 @@ const gracefulShutdown = (signal) => {
   // Stop accepting new requests
   server.close((err) => {
     if (err) {
-      logger.error('Error closing server:', err)
+      // logger.error('Error closing server:', err)
       process.exit(1)
     }
 
     console.log('HTTP server closed')
-    logger.info('HTTP server closed')
+    // logger.info('HTTP server closed')
 
     // Stop services
     deviceMonitoring.stop()
-    console.log('Device monitoring stopped')
+    // console.log('Device monitoring stopped')
 
     // Close MQTT connection
     mqttClient.end(() => {
       console.log('MQTT connection closed')
-      logger.info('MQTT connection closed')
+      // logger.info('MQTT connection closed')
       
       console.log('Graceful shutdown completed')
-      logger.info('Graceful shutdown completed')
+      // logger.info('Graceful shutdown completed')
       process.exit(0)
     })
   })
@@ -283,7 +203,7 @@ const gracefulShutdown = (signal) => {
   // Force exit if graceful shutdown takes too long
   setTimeout(() => {
     console.error('Could not close connections in time, forcefully shutting down')
-    logger.error('Forced shutdown due to timeout')
+    // logger.error('Forced shutdown due to timeout')
     process.exit(1)
   }, 10000) // 10 seconds timeout
 }
@@ -310,8 +230,6 @@ server.listen(port, () => {
   const startupMessage = `Binatra Server listening on port ${port}`
   console.log(startupMessage)
   console.log(`Health check available at: http://localhost:${port}/health`)
-  console.log(`System stats available at: http://localhost:${port}/api/v1/system/stats`)
-  console.log(`Detailed health check available at: http://localhost:${port}/api/v1/system/health-detailed`)
 
   logger.info('Server started successfully', {
     port,
@@ -334,8 +252,8 @@ server.listen(port, () => {
       notificationEmitter: 'active', 
       socketManager: 'active',
       deviceMonitoring: 'active',
-      deviceValidation: true, // ✅ New feature
-      securityAlerts: true    // ✅ New feature
+      deviceValidation: true,
+      securityAlerts: true 
     }
   })
 

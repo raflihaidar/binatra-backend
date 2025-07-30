@@ -23,10 +23,22 @@ class SensorLogController {
 
   createSensorLog = async (req, res) => {
     try {
-      // Log untuk debugging
-      console.log('Request body:', req.body);
-      
-      const sensorLog = await sensorLogService.createSensorLog(req.body);
+      const {deviceCode, deviceCalibration, depth, rainfall, waterLevel} = req.body
+
+      if(!deviceCode){
+        return res.status(400).json({ 
+          success: false,
+          message: 'Device code is required' 
+        });
+      }
+
+      const sensorLog = await sensorLogService.createSensorLog({
+        deviceCode,
+        deviceCalibration, 
+        depth, 
+        rainfall, 
+        waterLevel
+      });
 
       res.status(201).json({
         message: "Sensor log created successfully",

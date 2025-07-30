@@ -2,6 +2,7 @@ import logger from '../utils/logger.js';
 import { HeartbeatHandler } from '../handlers/mqtt/heartbeatHandler.js';
 import { DeviceCheckHandler } from '../handlers/mqtt/deviceCheckHandler.js';
 import { SensorDataHandler } from '../handlers/mqtt/sensorDataHandler.js';
+import { DeviceHandler } from '../handlers/mqtt/deviceHandler.js';
 
 export class MqttMessageRouter {
   constructor(deviceMonitoring, notificationEmitter) {
@@ -12,6 +13,7 @@ export class MqttMessageRouter {
     this.heartbeatHandler = new HeartbeatHandler(deviceMonitoring, notificationEmitter);
     this.deviceCheckHandler = new DeviceCheckHandler(notificationEmitter);
     this.sensorDataHandler = new SensorDataHandler(deviceMonitoring, notificationEmitter);
+    this.deviceHandler = new DeviceHandler(notificationEmitter);
   }
 
   async routeMessage(topic, message) {
@@ -82,6 +84,12 @@ export class MqttMessageRouter {
       return { handled: true, handler: 'SensorDataHandler', result };
     }
 
+    // Handle setting device messages: binatra-device/settings or binatra-device/{deviceCode}/settings
+    if (topic === 'binatra-device/settings' || topic.includes('/settings')) {
+      const result = await this.deviceHandler.updateDevice(message, deviceCode);
+      return { handled: true, handler: 'DeviceHandler', result };
+    }
+
     // Topic not handled by any route
     return { handled: false, handler: null, result: null };
   }
@@ -92,13 +100,16 @@ export class MqttMessageRouter {
       supportedTopics: [
         'binatra-device/+/heartbeat',
         'binatra-device/+/sensor', 
+        'binatra-device/+/settings',
         'binatra-device/sensor',
-        'binatra-device/check/device'
+        'binatra-device/check/device',
+        'binatra-device/settings'
       ],
       handlers: [
         'HeartbeatHandler',
         'DeviceCheckHandler', 
-        'SensorDataHandler'
+        'SensorDataHandler',
+        'DeviceHandler',
       ],
       timestamp: new Date().toISOString()
     };
