@@ -17,6 +17,8 @@ class SensorLogService {
       // Prepare data
       const sensorData = {
         deviceCode: data.deviceCode,
+        deviceCalibration : data.deviceCalibration,
+        depth : data.depth,
         rainfall: data.rainfall !== undefined ? parseFloat(data.rainfall) : null,
         waterLevel: data.waterLevel !== undefined ? parseFloat(data.waterLevel) : null,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
@@ -44,6 +46,8 @@ class SensorLogService {
 
         return {
           deviceCode: log.deviceCode,
+          deviceCalibration : data.deviceCalibration,
+          depth : data.depth,
           rainfall: log.rainfall !== undefined ? parseFloat(log.rainfall) : null,
           waterLevel: log.waterLevel !== undefined ? parseFloat(log.waterLevel) : null,
           timestamp: log.timestamp ? new Date(log.timestamp) : new Date()
@@ -150,6 +154,14 @@ class SensorLogService {
 
       // Prepare update data
       const data = {};
+
+      if (updateData.deviceCalibration !== undefined) {
+        data.deviceCalibration = parseFloat(updateData.deviceCalibration);
+      }
+
+      if (updateData.depth !== undefined) {
+        data.depth = parseFloat(updateData.depth);
+      }
       
       if (updateData.rainfall !== undefined) {
         data.rainfall = parseFloat(updateData.rainfall);

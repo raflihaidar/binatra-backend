@@ -23,6 +23,14 @@ class DeviceService {
      */
     async createDevice(data) {
         try {
+            if(!data.locationId) {
+                const error = new Error('Location Not Found');
+                error.code = 'LOCATION_NOT_FOUND';
+                error.statusCode = 404;
+
+                throw error
+            }
+
             // Check if device with same code already exists
             const existingDevice = await deviceRepository.findByCode(data.code);
 
@@ -35,15 +43,12 @@ class DeviceService {
                         id: existingDevice.id,
                         code: existingDevice.code,
                         description: existingDevice.description,
-                        location: existingDevice.location
+                        location: existingDevice.location,
+                        calibration : existingDevice.calibration,
+                        periode : existingDevice.periode
                     }
                 };
                 throw error;
-            }
-
-            // If no locationId provided, get default location
-            if (!data.locationId) {
-                data.locationId = await deviceRepository.getDefaultLocationId();
             }
 
             return await deviceRepository.create(data);
@@ -249,35 +254,35 @@ class DeviceService {
      */
     async ensureDeviceExists(deviceData) {
         try {
-            const { code, description, location } = deviceData;
+            const { code, description, location, calibration, periode } = deviceData;
 
             // Try to find existing device
             try {
                 const existingDevice = await this.findByCode(code);
                 if (existingDevice) {
-                    // Update heartbeat for existing device
                     return await this.updateHeartbeat(code);
                 }
             } catch (error) {
-                // Device doesn't exist, create new one
                 logger.info(`Device ${code} not found, creating new device`);
             }
-
-            // Get default location for new device
-            const defaultLocationId = await deviceRepository.getDefaultLocationId();
 
             // Create new device
             const newDevice = await this.createDevice({
                 code,
                 description: description || `Auto-created device ${code}`,
-                locationId: location
+                locationId: location,
+                calibration,
+                periode
             });
 
             logger.info(`New device created: ${code}`, {
                 deviceId: newDevice.id,
                 locationId: newDevice.locationId,
-                locationName: newDevice.location?.name
+                locationName: newDevice.location?.name,
+                calibration,
+                periode
             });
+            
             return newDevice;
 
         } catch (error) {

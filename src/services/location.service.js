@@ -1,16 +1,16 @@
-import { locationRepository } from '../repositories/location.repository.js';
-import logger from '../utils/logger.js';
+import { locationRepository } from "../repositories/location.repository.js";
+import logger from "../utils/logger.js";
 
 class LocationService {
   /**
- * Get all locations
- * @returns {Promise<Array>} List of locations
- */
+   * Get all locations
+   * @returns {Promise<Array>} List of locations
+   */
   async getAllLocations() {
     try {
       return await locationRepository.findAll();
     } catch (error) {
-      logger.error('Error in getAllLocations service:', error);
+      logger.error("Error in getAllLocations service:", error);
       throw error;
     }
   }
@@ -23,7 +23,7 @@ class LocationService {
     try {
       return await locationRepository.findLocationsWithoutDevices();
     } catch (error) {
-      logger.error('Error in getAllLocations service:', error);
+      logger.error("Error in getAllLocations service:", error);
       throw error;
     }
   }
@@ -38,8 +38,8 @@ class LocationService {
       const existingLocation = await locationRepository.findByUniqueData(data);
 
       if (existingLocation) {
-        const error = new Error('Location already exists');
-        error.code = 'LOCATION_EXISTS';
+        const error = new Error("Location already exists");
+        error.code = "LOCATION_EXISTS";
         error.statusCode = 409;
         error.details = {
           existingLocation: {
@@ -48,33 +48,41 @@ class LocationService {
             city: existingLocation.city,
             district: existingLocation.district,
             latitude: existingLocation.latitude,
-            longitude: existingLocation.longitude
-          }
+            longitude: existingLocation.longitude,
+          },
         };
         throw error;
       }
       return await locationRepository.create(data);
     } catch (error) {
-      logger.error('Error in createLocation service:', error);
+      logger.error("Error in createLocation service:", error);
       throw error;
     }
   }
 
   /**
-  * Update location
-  * @param {string} id - Location ID
-  * @param {Object} data - Update data
-  * @returns {Promise<Object>} Updated location
-  */
+   * Update location
+   * @param {string} id - Location ID
+   * @param {Object} data - Update data
+   * @returns {Promise<Object>} Updated location
+   */
   async updateLocation(id, data) {
     try {
       // Check for duplicate if updating unique fields
-      if (data.name || data.city || data.district || data.latitude || data.longitude) {
-        const existingLocation = await locationRepository.findByUniqueData(data);
+      if (
+        data.name ||
+        data.city ||
+        data.district ||
+        data.latitude ||
+        data.longitude
+      ) {
+        const existingLocation = await locationRepository.findByUniqueData(
+          data
+        );
 
         if (existingLocation && existingLocation.id !== id) {
-          const error = new Error('Location with this data already exists');
-          error.code = 'LOCATION_EXISTS';
+          const error = new Error("Location with this data already exists");
+          error.code = "LOCATION_EXISTS";
           error.statusCode = 409;
           throw error;
         }
@@ -82,25 +90,31 @@ class LocationService {
 
       const newLocatinData = await locationRepository.update(id, data);
 
-      this.processSensorData(newLocatinData.device.code, newLocatinData.currentWaterLevel, newLocatinData.currentRainfall)
+      if (newLocatinData.device) {
+        this.processSensorData(
+          newLocatinData.device.code,
+          newLocatinData.currentWaterLevel,
+          newLocatinData.currentRainfall
+        );
+      }
 
-      return newLocatinData
+      return newLocatinData;
     } catch (error) {
-      logger.error('Error in updateLocation service:', error);
+      logger.error("Error in updateLocation service:", error);
       throw error;
     }
   }
 
   /**
- * Delete location
- * @param {string} id - Location ID
- * @returns {Promise<Object>} Delete result
- */
+   * Delete location
+   * @param {string} id - Location ID
+   * @returns {Promise<Object>} Delete result
+   */
   async deleteLocation(id) {
     try {
       return await locationRepository.delete(id);
     } catch (error) {
-      logger.error('Error in deleteLocation service:', error);
+      logger.error("Error in deleteLocation service:", error);
       throw error;
     }
   }
@@ -118,7 +132,7 @@ class LocationService {
       }
       return location;
     } catch (error) {
-      logger.error('Error in getLocationById service:', error);
+      logger.error("Error in getLocationById service:", error);
       throw error;
     }
   }
@@ -131,9 +145,9 @@ class LocationService {
     try {
       const locations = await locationRepository.findActiveFloodLocations();
 
-      return locations
+      return locations;
     } catch (error) {
-      logger.error('Error in getActiveFloodWarnings service:', error);
+      logger.error("Error in getActiveFloodWarnings service:", error);
       throw error;
     }
   }
@@ -159,25 +173,37 @@ class LocationService {
       const previousStatus = location.currentStatus;
 
       // 3. Update location current status
-      const updatedLocation = await locationRepository.updateCurrentStatus(location.id, {
-        currentStatus: newStatus,
-        currentWaterLevel: waterLevel,
-        currentRainfall: rainfall
-      });
+      const updatedLocation = await locationRepository.updateCurrentStatus(
+        location.id,
+        {
+          currentStatus: newStatus,
+          currentWaterLevel: waterLevel,
+          currentRainfall: rainfall,
+        }
+      );
 
       let statusHistory = null;
 
       // 4. Create status history if status changed
       if (previousStatus !== newStatus) {
-        statusHistory = await this.createStatusHistory(location.id, previousStatus, newStatus, waterLevel, rainfall);
-
-        logger.info(`Location status changed: ${location.name} from ${previousStatus} to ${newStatus}`, {
-          locationId: location.id,
-          deviceCode,
+        statusHistory = await this.createStatusHistory(
+          location.id,
+          previousStatus,
+          newStatus,
           waterLevel,
-          rainfall,
-          historyId: statusHistory?.id
-        });
+          rainfall
+        );
+
+        logger.info(
+          `Location status changed: ${location.name} from ${previousStatus} to ${newStatus}`,
+          {
+            locationId: location.id,
+            deviceCode,
+            waterLevel,
+            rainfall,
+            historyId: statusHistory?.id,
+          }
+        );
       }
 
       return {
@@ -185,11 +211,11 @@ class LocationService {
         statusChanged: previousStatus !== newStatus,
         previousStatus,
         newStatus,
-        statusHistory,  // ✅ TAMBAH: Return history data
-        duration: statusHistory?.duration || 0
+        statusHistory, // ✅ TAMBAH: Return history data
+        duration: statusHistory?.duration || 0,
       };
     } catch (error) {
-      logger.error('Error in processSensorData service:', error);
+      logger.error("Error in processSensorData service:", error);
       throw error;
     }
   }
@@ -203,17 +229,23 @@ class LocationService {
   calculateFloodStatus(waterLevel, location) {
     // Menggunakan field threshold baru sesuai schema Prisma yang updated
     if (waterLevel >= location.bahayaMin) {
-      return 'BAHAYA';
-    } else if (waterLevel >= location.siagaMin && waterLevel <= location.siagaMax) {
-      return 'SIAGA';
-    } else if (waterLevel >= location.waspadaMin && waterLevel <= location.waspadaMax) {
-      return 'WASPADA';
+      return "BAHAYA";
+    } else if (
+      waterLevel >= location.siagaMin &&
+      waterLevel <= location.siagaMax
+    ) {
+      return "SIAGA";
+    } else if (
+      waterLevel >= location.waspadaMin &&
+      waterLevel <= location.waspadaMax
+    ) {
+      return "WASPADA";
     } else if (waterLevel <= location.amanMax) {
-      return 'AMAN';
+      return "AMAN";
     } else {
       // Fallback case - jika waterLevel di antara range yang tidak terdefinisi
       // Misalnya waterLevel > amanMax tapi < waspadaMin
-      return 'AMAN';
+      return "AMAN";
     }
   }
 
@@ -226,12 +258,19 @@ class LocationService {
    * @param {number} rainfall - Rainfall
    * @returns {Promise<Object>} History record
    */
-  async createStatusHistory(locationId, previousStatus, newStatus, waterLevel, rainfall) {
+  async createStatusHistory(
+    locationId,
+    previousStatus,
+    newStatus,
+    waterLevel,
+    rainfall
+  ) {
     try {
       // Calculate duration in previous status
       const location = await locationRepository.findById(locationId);
-      const duration = location.lastUpdate ?
-        Math.floor((new Date() - new Date(location.lastUpdate)) / (1000 * 60)) : 0;
+      const duration = location.lastUpdate
+        ? Math.floor((new Date() - new Date(location.lastUpdate)) / (1000 * 60))
+        : 0;
 
       const historyData = {
         locationId,
@@ -240,10 +279,12 @@ class LocationService {
         waterLevel,
         rainfall,
         duration,
-        changedAt: new Date()
+        changedAt: new Date(),
       };
 
-      const statusHistory = await locationRepository.createStatusHistory(historyData);
+      const statusHistory = await locationRepository.createStatusHistory(
+        historyData
+      );
 
       // ✅ TAMBAH: Return history dengan data location untuk socket emission
       return {
@@ -252,16 +293,16 @@ class LocationService {
           id: location.id,
           name: location.name,
           address: location.address,
-          district: location.district
+          district: location.district,
         },
         // Additional calculated fields for frontend
         timeSinceUpdate: this.calculateTimeSince(statusHistory.changedAt),
         statusColor: this.getStatusColor(newStatus),
         previousStatusColor: this.getStatusColor(previousStatus),
-        isFloodStatus: ['WASPADA', 'SIAGA', 'BAHAYA'].includes(newStatus)
+        isFloodStatus: ["WASPADA", "SIAGA", "BAHAYA"].includes(newStatus),
       };
     } catch (error) {
-      logger.error('Error creating status history:', error);
+      logger.error("Error creating status history:", error);
       throw error;
     }
   }
@@ -274,58 +315,60 @@ class LocationService {
     try {
       return await locationRepository.getFloodSummary();
     } catch (error) {
-      logger.error('Error in getFloodSummary service:', error);
+      logger.error("Error in getFloodSummary service:", error);
       throw error;
     }
   }
 
   /**
-     * Get all location status history with pagination and filters
-     * @param {Object} params - Query parameters
-     * @returns {Object} Result with data and pagination
-     */
+   * Get all location status history with pagination and filters
+   * @param {Object} params - Query parameters
+   * @returns {Object} Result with data and pagination
+   */
   async getAllLocationStatusHistory(params = {}) {
     try {
       // Validate and sanitize parameters
       const validatedParams = this.validateGetAllParams(params);
 
-      logger.info('Fetching location status history', {
+      logger.info("Fetching location status history", {
         page: validatedParams.page,
         limit: validatedParams.limit,
         status: validatedParams.status,
-        dateRange: validatedParams.startDate && validatedParams.endDate ?
-          `${validatedParams.startDate} to ${validatedParams.endDate}` : 'all'
+        dateRange:
+          validatedParams.startDate && validatedParams.endDate
+            ? `${validatedParams.startDate} to ${validatedParams.endDate}`
+            : "all",
       });
 
       // Call repository method
-      const result = await locationRepository.getLocationStatusHistory(validatedParams);
+      const result = await locationRepository.getLocationStatusHistory(
+        validatedParams
+      );
 
       if (result.success) {
-        logger.info('Location status history fetched successfully', {
+        logger.info("Location status history fetched successfully", {
           totalItems: result.pagination?.totalItems || 0,
-          currentPage: result.pagination?.currentPage || 1
+          currentPage: result.pagination?.currentPage || 1,
         });
       } else {
-        logger.error('Failed to fetch location status history:', result.error);
+        logger.error("Failed to fetch location status history:", result.error);
       }
 
       return result;
-
     } catch (error) {
-      logger.error('Error in getAllLocationStatusHistory service:', error);
+      logger.error("Error in getAllLocationStatusHistory service:", error);
       return {
         success: false,
-        error: 'Failed to retrieve location status history',
+        error: "Failed to retrieve location status history",
         data: [],
-        pagination: null
+        pagination: null,
       };
     }
   }
 
-
   /**
- * Validate parameters for getAllLocationStatusHistory
- */
+   * Validate parameters for getAllLocationStatusHistory
+   */
   validateGetAllParams(params) {
     const {
       page = 1,
@@ -333,8 +376,8 @@ class LocationService {
       status = null,
       startDate = null,
       endDate = null,
-      sortBy = 'changedAt',
-      sortOrder = 'desc'
+      sortBy = "changedAt",
+      sortOrder = "desc",
     } = params;
 
     // Validate pagination
@@ -342,14 +385,23 @@ class LocationService {
     const validLimit = Math.min(100, Math.max(1, parseInt(limit) || 10));
 
     // Validate sort parameters
-    const validSortFields = ['changedAt', 'previousStatus', 'newStatus', 'waterLevel', 'rainfall', 'duration'];
-    const validSortOrders = ['asc', 'desc'];
+    const validSortFields = [
+      "changedAt",
+      "previousStatus",
+      "newStatus",
+      "waterLevel",
+      "rainfall",
+      "duration",
+    ];
+    const validSortOrders = ["asc", "desc"];
 
-    const validSortBy = validSortFields.includes(sortBy) ? sortBy : 'changedAt';
-    const validSortOrder = validSortOrders.includes(sortOrder?.toLowerCase()) ? sortOrder.toLowerCase() : 'desc';
+    const validSortBy = validSortFields.includes(sortBy) ? sortBy : "changedAt";
+    const validSortOrder = validSortOrders.includes(sortOrder?.toLowerCase())
+      ? sortOrder.toLowerCase()
+      : "desc";
 
     // Validate status
-    const validStatuses = ['AMAN', 'WASPADA', 'SIAGA', 'BAHAYA'];
+    const validStatuses = ["AMAN", "WASPADA", "SIAGA", "BAHAYA"];
     const validStatus = validStatuses.includes(status) ? status : null;
 
     return {
@@ -359,11 +411,9 @@ class LocationService {
       startDate,
       endDate,
       sortBy: validSortBy,
-      sortOrder: validSortOrder
+      sortOrder: validSortOrder,
     };
   }
-
-
 
   /**
    * Update location thresholds
@@ -375,7 +425,7 @@ class LocationService {
     try {
       return await locationRepository.updateThresholds(locationId, thresholds);
     } catch (error) {
-      logger.error('Error in updateThresholds service:', error);
+      logger.error("Error in updateThresholds service:", error);
       throw error;
     }
   }
@@ -389,37 +439,38 @@ class LocationService {
     try {
       return await locationRepository.search(query);
     } catch (error) {
-      logger.error('Error in searchLocations service:', error);
+      logger.error("Error in searchLocations service:", error);
       throw error;
     }
   }
 
   // Helper methods for frontend calculations
   calculateTimeSince(lastUpdate) {
-    if (!lastUpdate) return 'No data';
+    if (!lastUpdate) return "No data";
 
     const now = new Date();
     const updateTime = new Date(lastUpdate);
     const diffMinutes = Math.floor((now - updateTime) / (1000 * 60));
 
-    if (diffMinutes < 1) return 'Just now';
+    if (diffMinutes < 1) return "Just now";
     if (diffMinutes < 60) return `${diffMinutes} min ago`;
 
     const diffHours = Math.floor(diffMinutes / 60);
-    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? 's' : ''} ago`;
+    if (diffHours < 24)
+      return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
 
     const diffDays = Math.floor(diffHours / 24);
-    return `${diffDays} day${diffDays > 1 ? 's' : ''} ago`;
+    return `${diffDays} day${diffDays > 1 ? "s" : ""} ago`;
   }
 
   getStatusColor(status) {
     const colors = {
-      'AMAN': 'green',
-      'WASPADA': 'yellow',
-      'SIAGA': 'orange', // Added SIAGA status
-      'BAHAYA': 'red'
+      AMAN: "green",
+      WASPADA: "yellow",
+      SIAGA: "orange", // Added SIAGA status
+      BAHAYA: "red",
     };
-    return colors[status] || 'gray';
+    return colors[status] || "gray";
   }
 
   calculateProgress(currentLevel, maxLevel) {
@@ -441,22 +492,28 @@ class LocationService {
     let progressToNext = 0;
 
     switch (status) {
-      case 'AMAN':
+      case "AMAN":
         nextThreshold = location.waspadaMin;
-        nextThresholdName = 'WASPADA';
+        nextThresholdName = "WASPADA";
         progressToNext = (waterLevel / location.waspadaMin) * 100;
         break;
-      case 'WASPADA':
+      case "WASPADA":
         nextThreshold = location.siagaMin;
-        nextThresholdName = 'SIAGA';
-        progressToNext = ((waterLevel - location.waspadaMin) / (location.siagaMin - location.waspadaMin)) * 100;
+        nextThresholdName = "SIAGA";
+        progressToNext =
+          ((waterLevel - location.waspadaMin) /
+            (location.siagaMin - location.waspadaMin)) *
+          100;
         break;
-      case 'SIAGA':
+      case "SIAGA":
         nextThreshold = location.bahayaMin;
-        nextThresholdName = 'BAHAYA';
-        progressToNext = ((waterLevel - location.siagaMin) / (location.bahayaMin - location.siagaMin)) * 100;
+        nextThresholdName = "BAHAYA";
+        progressToNext =
+          ((waterLevel - location.siagaMin) /
+            (location.bahayaMin - location.siagaMin)) *
+          100;
         break;
-      case 'BAHAYA':
+      case "BAHAYA":
         nextThreshold = null;
         nextThresholdName = null;
         progressToNext = 100;
@@ -474,13 +531,13 @@ class LocationService {
         waspadaMax: location.waspadaMax,
         siagaMin: location.siagaMin,
         siagaMax: location.siagaMax,
-        bahayaMin: location.bahayaMin
-      }
+        bahayaMin: location.bahayaMin,
+      },
     };
   }
 
   async calculateTotalLocations() {
-    return await locationRepository.countLocation()
+    return await locationRepository.countLocation();
   }
 }
 

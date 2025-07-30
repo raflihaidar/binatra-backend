@@ -1,7 +1,3 @@
-// ========================================
-// services/notificationEmitter.service.js
-// ========================================
-
 import logger from '../utils/logger.js';
 
 /**
