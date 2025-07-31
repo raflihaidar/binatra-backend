@@ -15,6 +15,7 @@ export class SensorDataHandler {
 
     try {
       const json = JSON.parse(message);
+      console.log(json)
       const sensorDeviceCode = deviceCode || json.deviceCode || json.code;
 
       if (!sensorDeviceCode) {
@@ -22,13 +23,13 @@ export class SensorDataHandler {
         throw new Error("Sensor data missing device code");
       }
 
-      const waterLevel =
-        json.waterlevel_cm || json.waterLevel || json.waterlevel || null;
-      const rainfall = json.rainfall_mm || json.rainfall || json.rain || null;
-      const deviceCalibration = json.deviceCalibration || null;
-      const depth = json.depth || null;
-      const voltage = json.voltage || null;
+      const waterLevel = json.waterlevel || 0
+      const rainfall = json.rainfall || 0
+      const deviceCalibration = json.deviceCalibration || 0;
+      const depth = json.depth || 0;
+      const voltage = json.voltage || 0;
 
+      
       const sensorData = {
         deviceCode: sensorDeviceCode,
         waterlevel: waterLevel,
@@ -39,6 +40,8 @@ export class SensorDataHandler {
         rainfall,
         timestamp,
       };
+      
+      console.log("sensor data : ", sensorData)
 
       // Update device heartbeat
       try {
@@ -78,6 +81,7 @@ export class SensorDataHandler {
         locationResult,
       };
     } catch (error) {
+      console.log(error)
       logger.error("Error processing sensor data:", error);
 
       this.notificationEmitter.emitToAll("sensor-data-error", {
@@ -92,16 +96,9 @@ export class SensorDataHandler {
   }
 
   async saveSensorData(sensorData) {
-    const {
-      deviceCode,
-      deviceCalibration,
-      depth,
-      voltage,
-      rainfall,
-      waterLevel,
-    } = sensorData;
+    const {deviceCode} = sensorData;
 
-    if (waterLevel === null || rainfall === null || deviceCode == null || deviceCalibration == null || depth == null || voltage == null) {
+    if (!deviceCode) {
       return { saved: false, reason: "No valid sensor data to save" };
     }
 
