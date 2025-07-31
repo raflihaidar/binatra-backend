@@ -32,6 +32,29 @@ class DeviceController {
     }
   }
 
+  getDeviceById = async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      const devices = await deviceService.getDeviceById(id)
+      
+      return res.status(200).json({
+        success: true,
+        message: 'Devices retrieved successfully',
+        data: {
+          devices
+        }
+      });
+    } catch (error) {
+      logger.error('Error getting devices:', error);
+      return res.status(500).json({ 
+        success: false,
+        message: 'Failed to get devices',
+        error: error.message 
+      });
+    }
+  }
+
   /**
    * Create a new device
    */

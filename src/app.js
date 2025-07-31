@@ -120,7 +120,7 @@ mqttClient.on('reconnect', () => {
   notificationEmitter.emitSystemNotification('info', 'MQTT Reconnecting...')
 })
 
-setupSocketHandler(io, socketManager)
+setupSocketHandler(io, socketManager, mqttClient)
 
 // Health Check Endpoint
 app.get('/health', async (req, res) => {
