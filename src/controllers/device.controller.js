@@ -9,18 +9,17 @@ class DeviceController {
     try {
       const page = parseInt(req.query.page) || 1;
       const limit = parseInt(req.query.limit) || 10;
-      const skip = (page - 1) * limit;
-      
-      const devices = await deviceService.getAllDevice({ skip, take: limit });
-      
+      const status = req.query.status || null;
+      const search = req.query.search || null;
+      const sortBy = req.query.sortBy || null;
+      const sortOrder = req.query.sortOrder || null;
+  
+      const devices = await deviceService.getAllDevice({ page, limit, status, search, sortBy, sortOrder });
+  
       return res.status(200).json({
         success: true,
         message: 'Devices retrieved successfully',
-        data: {
-          page,
-          limit,
-          devices
-        }
+        ...devices
       });
     } catch (error) {
       logger.error('Error getting devices:', error);
@@ -30,7 +29,8 @@ class DeviceController {
         error: error.message 
       });
     }
-  }
+  };
+  
 
   getDeviceById = async (req, res) => {
     try {
@@ -60,7 +60,7 @@ class DeviceController {
    */
   createDevice = async (req, res) => {
     try {
-      const { code, locationId, description, calibration, periode } = req.body;
+      const { code, name, locationId, description, calibration, periode } = req.body;
   
       if (!code) {
         return res.status(400).json({ 
@@ -71,6 +71,7 @@ class DeviceController {
   
       const device = await deviceService.createDevice({ 
         code, 
+        name,
         locationId, 
         description,
         calibration,

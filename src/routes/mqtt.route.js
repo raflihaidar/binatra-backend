@@ -5,13 +5,14 @@ import { SensorDataHandler } from '../handlers/mqtt/sensorDataHandler.js';
 import { DeviceHandler } from '../handlers/mqtt/deviceHandler.js';
 
 export class MqttMessageRouter {
-  constructor(deviceMonitoring, notificationEmitter) {
+  constructor(deviceMonitoring, notificationEmitter, mqttClient) {
     this.deviceMonitoring = deviceMonitoring;
     this.notificationEmitter = notificationEmitter;
+    this.mqttClient = mqttClient
     
     // Initialize handlers
     this.heartbeatHandler = new HeartbeatHandler(deviceMonitoring, notificationEmitter);
-    this.deviceCheckHandler = new DeviceCheckHandler(notificationEmitter);
+    this.deviceCheckHandler = new DeviceCheckHandler(notificationEmitter, mqttClient);
     this.sensorDataHandler = new SensorDataHandler(deviceMonitoring, notificationEmitter);
     this.deviceHandler = new DeviceHandler(notificationEmitter);
   }
@@ -78,14 +79,14 @@ export class MqttMessageRouter {
       return { handled: true, handler: 'DeviceCheckHandler', result };
     }
 
-    // Handle sensor data messages: binatra-device/sensor or binatra-device/{deviceCode}/sensor
-    if (topic === 'binatra-device/sensor' || topic.includes('/sensor')) {
+    // Handle sensor data messages: binatra-device/{deviceCode}/sensor
+    if (/^binatra-device\/[^/]+\/sensor$/.test(topic)) {
       const result = await this.sensorDataHandler.handleSensorData(topic, message, deviceCode);
       return { handled: true, handler: 'SensorDataHandler', result };
     }
 
-    // Handle setting device messages: binatra-device/settings or binatra-device/{deviceCode}/settings
-    if (topic === 'binatra-device/settings' || topic.includes('/settings')) {
+    // Handle setting device messages: binatra-device/{deviceCode}/settings
+    if (/^binatra-device\/[^/]+\/settings$/.test(topic)) {
       const result = await this.deviceHandler.updateDevice(message, deviceCode);
       return { handled: true, handler: 'DeviceHandler', result };
     }

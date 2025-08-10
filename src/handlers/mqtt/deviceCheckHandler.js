@@ -3,8 +3,10 @@ import { deviceController } from '../../controllers/device.controller.js';
 import { createNotification } from '../../utils/notification.js';
 
 export class DeviceCheckHandler {
-  constructor(notificationEmitter) {
+  
+  constructor(notificationEmitter, mqttClient) {
     this.notificationEmitter = notificationEmitter;
+    this.mqttClient = mqttClient;
   }
 
   async handleDeviceCheck(topic, message) {
@@ -57,13 +59,21 @@ export class DeviceCheckHandler {
         isNewDevice
       });
 
-      // Emit device check result
+      const configResponse = JSON.stringify({
+        deviceCode: device.code,
+        periode : device.periode,
+        calibration: device.calibration,
+        locationId : device.locationId
+      })
+    
       this.notificationEmitter.emitToAll('device-check-result', {
         deviceCode: checkDeviceCode,
         device: device,
         isNewDevice,
         timestamp: timestamp.toISOString()
       });
+
+      this.mqttClient.publish(`binatra-device/${device.code}/settings`, configResponse, {qos : 1} )
 
       return {
         success: true,

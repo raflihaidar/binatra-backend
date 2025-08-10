@@ -72,6 +72,7 @@ model Location {
 model Device {
   id          String  @id @default(uuid())
   code        String  @unique @db.VarChar(100)
+  name        String  @unique @db.VarChar(255)
   description String? @db.Text
   locationId  Int     @unique
 
@@ -82,7 +83,7 @@ model Device {
 
   // Metadata
   createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  updatedAt DateTime
 
   // Relations
   location   Location    @relation(fields: [locationId], references: [id], onDelete: Cascade)
@@ -95,14 +96,14 @@ model Device {
 }
 
 model SensorLog {
-  id          String   @id @default(uuid())
-  deviceCode  String
-  deviceCalibration Float     @default(0)
-  rainfall    Float    @default(0) // mm/h - curah hujan
-  waterLevel  Float    @default(0) // cm - ketinggian air
-  depth       Float    @default(0) //cm
-  voltage     Float    @default(0)
-  timestamp   DateTime @default(now())
+  id                String   @id @default(uuid())
+  deviceCode        String
+  deviceCalibration Float    @default(0)
+  rainfall          Float    @default(0) // mm/h - curah hujan
+  waterLevel        Float    @default(0) // cm - ketinggian air
+  depth             Float    @default(0) //cm
+  voltage           Float    @default(0)
+  timestamp         DateTime @default(now())
 
   // Relations
   device Device @relation(fields: [deviceCode], references: [code], onDelete: Cascade)

@@ -13,6 +13,7 @@ export class DeviceHandler {
       const periode = json.periode;
 
       const device = await deviceService.findByCode(deviceCode)
+
       if(device){
         await deviceService.updateDevice(device.id, {
           code : deviceCode,
@@ -21,6 +22,12 @@ export class DeviceHandler {
           periode
         })
       }
+
+      return {
+        success: true,
+        device,
+        deviceCode
+      };
     } catch (error) {
         console.log(error)
     }

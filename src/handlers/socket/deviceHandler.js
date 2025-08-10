@@ -3,11 +3,13 @@ import { deviceService } from "../../services/device.service.js";
 export default function deviceHandler(socket, mqttClient) {
   socket.on("device-setting", async (data) => {
     try {
+      console.log("data yang diterima socket : ", data)
       const code = data.deviceCode;
+      const name = data.deviceName;
+      const description = data.description;
       const locationId = data.locationId;
       const calibration = data.calibration;
       const periode = data.periode;
-
 
       const device = await deviceService.findByCode(code);
 
@@ -22,6 +24,8 @@ export default function deviceHandler(socket, mqttClient) {
 
       const updatedDevice = await deviceService.updateDevice(device.id, {
         code,
+        name,
+        description,
         locationId,
         calibration,
         periode,
@@ -43,7 +47,6 @@ export default function deviceHandler(socket, mqttClient) {
       const generalTopic = 'binatra-device/settings';
       
       try {
-        // Publish configuration to specific device topic
         await mqttClient.publish(deviceSpecificTopic, JSON.stringify(mqttPayload), {
           qos: 1,
           retain: false

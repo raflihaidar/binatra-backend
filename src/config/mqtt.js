@@ -12,8 +12,5 @@ export const mqttConfig = {
   ...(isProduction && {
     username: process.env.MQTT_USERNAME,
     password: process.env.MQTT_PASSWORD,
-  }),
-  topics: {
-    waterLevel: 'esp32/sensor/waterlevel',
-  }
+  })
 }

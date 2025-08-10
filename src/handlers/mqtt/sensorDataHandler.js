@@ -29,7 +29,6 @@ export class SensorDataHandler {
       const depth = json.depth || 0;
       const voltage = json.voltage || 0;
 
-      
       const sensorData = {
         deviceCode: sensorDeviceCode,
         waterlevel: waterLevel,

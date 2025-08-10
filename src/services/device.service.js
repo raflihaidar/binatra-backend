@@ -175,8 +175,7 @@ class DeviceService {
    */
   async checkAndUpdateOfflineDevices(timeoutMinutes = 5) {
     try {
-      const potentiallyOfflineDevices =
-        await deviceRepository.findPotentiallyOfflineDevices(timeoutMinutes);
+      const potentiallyOfflineDevices = await deviceRepository.findPotentiallyOfflineDevices(timeoutMinutes);
 
       const offlineDeviceCodes = potentiallyOfflineDevices.map(
         (device) => device.code
@@ -186,6 +185,7 @@ class DeviceService {
         await deviceRepository.bulkUpdateStatusToDisconnected(
           offlineDeviceCodes
         );
+        
         logger.info(
           `Marked ${offlineDeviceCodes.length} devices as DISCONNECTED due to timeout`,
           {

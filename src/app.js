@@ -24,17 +24,16 @@ dotenv.config()
 
 const app = express()
 const server = createServer(app)
-
+const mqttClient = mqtt.connect(mqttConfig)
 const io = setupSocket(server, () => null)
 
 // Initialize services
 const deviceMonitoring = new DeviceMonitoringService(io)
 const notificationEmitter = new NotificationEmitter(io)
-const mqttRouter = new MqttMessageRouter(deviceMonitoring, notificationEmitter)
+const mqttRouter = new MqttMessageRouter(deviceMonitoring, notificationEmitter, mqttClient)
 const socketManager = new SocketConnectionManager(io, deviceMonitoring, notificationEmitter)
-
+setupSocketHandler(io, socketManager, mqttClient)
 const port = process.env.APP_PORT
-const mqttClient = mqtt.connect(mqttConfig)
 
 app.use(cors(corsOptions))
 app.use(express.json())
@@ -84,7 +83,6 @@ mqttClient.on('message', async (topic, message) => {
       handler: result.handler,
       success: result.success
     })
-
   } catch (error) {
     logger.error('Error processing MQTT message:', {
       topic,
@@ -119,8 +117,6 @@ mqttClient.on('reconnect', () => {
   // logger.info('MQTT reconnecting...')
   notificationEmitter.emitSystemNotification('info', 'MQTT Reconnecting...')
 })
-
-setupSocketHandler(io, socketManager, mqttClient)
 
 // Health Check Endpoint
 app.get('/health', async (req, res) => {
@@ -228,8 +224,7 @@ process.on('unhandledRejection', (reason, promise) => {
 // Start Server
 server.listen(port, () => {
   const startupMessage = `Binatra Server listening on port ${port}`
-  console.log(startupMessage)
-  console.log(`Health check available at: http://localhost:${port}/health`)
+  logger.info(startupMessage)
 
   logger.info('Server started successfully', {
     port,
@@ -255,11 +250,5 @@ server.listen(port, () => {
       deviceValidation: true,
       securityAlerts: true 
     }
-  })
-
-  // Send startup notification
-  notificationEmitter.emitSystemNotification('info', 'Server Started Successfully', {
-    port,
-    timestamp: new Date().toISOString()
   })
 })

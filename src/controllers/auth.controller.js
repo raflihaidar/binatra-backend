@@ -1,5 +1,6 @@
 import { login, register, verifyToken, refreshToken } from "../services/auth.service.js";
 import { prisma } from "../prisma/prismaClient.js";
+import logger from "../logger/index.js";
 
 // Cookie options
 const cookieOptions = {
@@ -33,8 +34,8 @@ export const registerController = async (req, res) => {
       data: user,
     });
   } catch (error) {
-    console.error('Register controller error:', error.message);
-    
+    logger.error('Register controller error:', error.message)
+  
     res.status(400).json({
       success: false,
       message: 'Registrasi gagal',
@@ -67,7 +68,11 @@ export const loginController = async (req, res) => {
       data: user,
     });
   } catch (error) {
-    console.error('Login controller error:', error.message);
+    console.error({
+      success: false,
+      message: 'Login gagal',
+      error: error.message
+    });
     
     // Berikan status code yang tepat berdasarkan jenis error
     const statusCode = error.message.includes('Username atau password salah') ? 401 : 400;

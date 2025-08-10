@@ -21,12 +21,14 @@ class DeviceRepository {
       return await prisma.device.create({
         data: {
           code: data.code,
+          name : data.name,
           locationId: data.locationId,
           description: data.description,
           status: 'DISCONNECTED',
           calibration : data.calibration,
           periode : data.periode,
           lastSeen: null,
+          updatedAt : new Date()
         },
         include: {
           location: {
@@ -99,7 +101,9 @@ class DeviceRepository {
             select: { 
               id: true,
               name: true, 
-              address: true 
+              address: true,
+              latitude : true,
+              longitude : true
             }
           }
         }
@@ -110,40 +114,82 @@ class DeviceRepository {
     }
   }
 
-  /**
-   * Get all devices with status information
-   * @param {Object} [options] - Query options
-   * @param {number} [options.skip] - Number of records to skip
-   * @param {number} [options.take] - Number of records to take
-   * @returns {Promise<Array>} List of devices with status
-   */
-  async findAll(options = {}) {
-    try {
-      const { skip, take } = options;
-      
-      return await prisma.device.findMany({
-        skip: skip ? parseInt(skip) : undefined,
-        take: take ? parseInt(take) : undefined,
+/**
+ * Get all devices with status information, search, and sorting
+ * @param {Object} [options] - Query options
+ * @param {number} [options.page] - Page number
+ * @param {number} [options.limit] - Records per page
+ * @param {string} [options.status] - Filter by device status
+ * @param {string} [options.search] - Search term
+ * @param {string} [options.sortBy] - Column to sort by
+ * @param {'asc'|'desc'} [options.sortOrder] - Sort order
+ * @returns {Promise<Object>} Paginated devices
+ */
+async findAll(options = {}) {
+  try {
+    const page = parseInt(options.page || '1');
+    const limit = parseInt(options.limit || '10');
+    const skip = (page - 1) * limit;
+
+    const { status, search, sortBy, sortOrder } = options;
+
+    const where = {};
+
+    if (status) {
+      where.status = status; // misalnya status: 'active'
+    }
+
+    if (search) {
+      where.OR = [
+        { code: { contains: search } },
+        { location: { name: { contains: search } } }
+      ];
+    }
+
+    // Sorting
+    const orderBy = {};
+    if (sortBy) {
+      orderBy[sortBy] = sortOrder && ['asc', 'desc'].includes(sortOrder.toLowerCase())
+        ? sortOrder.toLowerCase()
+        : 'asc';
+    } else {
+      orderBy.createdAt = 'desc'; // default
+    }
+
+    const [devices, total] = await Promise.all([
+      prisma.device.findMany({
+        skip,
+        take: limit,
+        where,
         include: {
           location: {
-            select: { 
+            select: {
               id: true,
-              name: true, 
+              name: true,
               address: true,
               currentStatus: true,
               currentWaterLevel: true
             }
           }
         },
-        orderBy: {
-          createdAt: 'desc'
-        }
-      });
-    } catch (error) {
-      logger.error(`Error finding all devices: ${error.message}`, error);
-      throw error;
-    }
+        orderBy
+      }),
+      prisma.device.count({ where })
+    ]);
+
+    return {
+      page,
+      limit,
+      totalItems : total,
+      totalPages: Math.ceil(total / limit),
+      data: devices
+    };
+  } catch (error) {
+    logger.error(`Error finding all devices: ${error.message}`, error);
+    throw error;
   }
+}
+
 
   /**
    * Update device details
@@ -162,10 +208,12 @@ class DeviceRepository {
         where: { id },
         data: {
           code: data.code,
+          name : data.name,
           locationId: data.locationId,
           description: data.description,
           calibration : data.calibration,
-          periode : data.periode
+          periode : data.periode,
+          updatedAt : new Date()
         },
         include: {
           location: {
@@ -485,8 +533,7 @@ class DeviceRepository {
           },
         },
         data: {
-          status: 'DISCONNECTED',
-          updatedAt: new Date()
+          status: 'DISCONNECTED'
         }
       });
     } catch (error) {

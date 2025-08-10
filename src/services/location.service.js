@@ -88,7 +88,7 @@ class LocationService {
         }
       }
 
-      const newLocatinData = await locationRepository.update(id, data);
+      const newLocatinData = await locationRepository.update(parseInt(id), data);
 
       if (newLocatinData.device) {
         this.processSensorData(
@@ -112,7 +112,7 @@ class LocationService {
    */
   async deleteLocation(id) {
     try {
-      return await locationRepository.delete(id);
+      return await locationRepository.delete(parseInt(id));
     } catch (error) {
       logger.error("Error in deleteLocation service:", error);
       throw error;
@@ -126,7 +126,7 @@ class LocationService {
    */
   async getLocationById(id) {
     try {
-      const location = await locationRepository.findById(id);
+      const location = await locationRepository.findById(parseInt(id));
       if (!location) {
         throw new Error(`Location with ID ${id} not found`);
       }
@@ -417,13 +417,13 @@ class LocationService {
 
   /**
    * Update location thresholds
-   * @param {string} locationId - Location ID
+   * @param {int} locationId - Location ID
    * @param {Object} thresholds - New threshold values
    * @returns {Promise<Object>} Updated location
    */
   async updateThresholds(locationId, thresholds) {
     try {
-      return await locationRepository.updateThresholds(locationId, thresholds);
+      return await locationRepository.updateThresholds(parseInt(locationId), thresholds);
     } catch (error) {
       logger.error("Error in updateThresholds service:", error);
       throw error;
