@@ -31,6 +31,7 @@ export class DeviceCheckHandler {
       // Use deviceController.ensureDeviceExists for consistency
       const device = await deviceController.ensureDeviceExists({
         code: checkDeviceCode,
+        name : json.deviceName,
         description: json.description || `Auto-created device with code ${checkDeviceCode}`,
         location: json.location || null,
         calibration : json.calibration || 0,

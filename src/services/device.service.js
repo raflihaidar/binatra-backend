@@ -280,7 +280,7 @@ class DeviceService {
    */
   async ensureDeviceExists(deviceData) {
     try {
-      const { code, description, location, calibration, periode } = deviceData;
+      const { code, name, description, location, calibration, periode } = deviceData;
 
       // Try to find existing device
       try {
@@ -295,6 +295,7 @@ class DeviceService {
       // Create new device
       const newDevice = await this.createDevice({
         code,
+        name,
         description: description || `Auto-created device ${code}`,
         locationId: location,
         calibration,
