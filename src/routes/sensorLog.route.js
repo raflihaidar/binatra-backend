@@ -6,5 +6,6 @@ export const router = express.Router();
 
 router.get('/:deviceCode', authenticateToken, sensorLogController.getSensorLogs);
 router.get('/history/:deviceCode', authenticateToken, sensorLogController.getSensorLogsByDateRange)
+router.get('/:deviceCode/export', authenticateToken, sensorLogController.exportCSV)
 router.post('/', authenticateToken, sensorLogController.createSensorLog);
  

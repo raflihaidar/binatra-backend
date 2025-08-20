@@ -56,11 +56,6 @@ class DeviceRepository {
     }
   }
 
-  /**
-   * Find a device by its unique code
-   * @param {string} code - Device code
-   * @returns {Promise<Object|null>} Found device or null
-   */
   async findByCode(code) {
     try {
       return await prisma.device.findUnique({
@@ -80,6 +75,29 @@ class DeviceRepository {
             }
           }
         }
+      });
+    } catch (error) {
+      logger.error(`Error finding device by Code: ${error.message}`, error);
+      throw error;
+    }
+  }
+
+  /**
+   * Find a device by its unique code
+   * @param {string} code - Device code
+   * @returns {Promise<Object|null>} Found device or null
+   */
+  async findByUniqueField(code, location) {
+    console.log("lokasi : ", location)
+    console.log("code : ", code)
+    try {
+      return await prisma.device.findUnique({
+        where: {
+          code_locationId: {
+            code,
+            locationId: location
+          }
+        },
       });
     } catch (error) {
       logger.error(`Error finding device by Code: ${error.message}`, error);
@@ -142,20 +160,26 @@ async findAll(options = {}) {
     if (search) {
       where.OR = [
         { code: { contains: search } },
+        { name: { contains: search } },
         { location: { name: { contains: search } } }
       ];
     }
 
     // Sorting
-    const orderBy = {};
-    if (sortBy) {
-      orderBy[sortBy] = sortOrder && ['asc', 'desc'].includes(sortOrder.toLowerCase())
-        ? sortOrder.toLowerCase()
-        : 'asc';
-    } else {
-      orderBy.createdAt = 'desc'; // default
-    }
+    const orderBy = [{
+      status: 'asc',
+    }]
 
+    if (sortBy) {
+      orderBy.push({
+        [sortBy]: sortOrder && ['asc', 'desc'].includes(sortOrder.toLowerCase())
+          ? sortOrder.toLowerCase()
+          : 'asc',
+      });
+    } else {
+      orderBy.push({ createdAt: 'desc' });
+    }
+    
     const [devices, total] = await Promise.all([
       prisma.device.findMany({
         skip,

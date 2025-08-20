@@ -76,16 +76,35 @@ class DeviceService {
     }
   }
 
+    /**
+   * Find device by code
+   * @param {string} code - Device code
+   * @returns {Promise<Object|null>} Found device or null
+   */
+    async findByCode(code) {
+      try {
+        const device = await deviceRepository.findByCode(code);
+        if (!device) {
+          throw new Error(`Device with code ${code} not found`);
+        }
+        return device;
+      } catch (error) {
+        logger.error("Error in findByCode service:", error);
+        throw error;
+      }
+    }
+
   /**
    * Find device by code
    * @param {string} code - Device code
    * @returns {Promise<Object|null>} Found device or null
    */
-  async findByCode(code) {
+  async findByUniqueField(code, location) {
     try {
-      const device = await deviceRepository.findByCode(code);
+      const device = await deviceRepository.findByUniqueField(code, location);
       if (!device) {
-        throw new Error(`Device with code ${code} not found`);
+        logger.info(`Device with code ${code} not found`)
+        return null
       }
       return device;
     } catch (error) {
@@ -102,10 +121,8 @@ class DeviceService {
    */
   async updateHeartbeat(code, timestamp = new Date()) {
     try {
-      // Check if device exists first
-      await this.findByCode(code);
-
-      return await deviceRepository.updateHeartbeat(code, timestamp);
+      const response = await deviceRepository.updateHeartbeat(code, timestamp);
+      return response
     } catch (error) {
       logger.error("Error in updateHeartbeat service:", error);
       throw error;
@@ -282,9 +299,9 @@ class DeviceService {
     try {
       const { code, name, description, location, calibration, periode } = deviceData;
 
-      // Try to find existing device
       try {
-        const existingDevice = await this.findByCode(code);
+        const existingDevice = await this.findByUniqueField(code, location);
+
         if (existingDevice) {
           return await this.updateHeartbeat(code);
         }
@@ -301,6 +318,8 @@ class DeviceService {
         calibration,
         periode,
       });
+
+      await this.updateHeartbeat(code);
 
       logger.info(`New device created: ${code}`, {
         deviceId: newDevice.id,

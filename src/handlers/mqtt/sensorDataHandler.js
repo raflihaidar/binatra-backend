@@ -39,8 +39,6 @@ export class SensorDataHandler {
         rainfall,
         timestamp,
       };
-      
-      console.log("sensor data : ", sensorData)
 
       // Update device heartbeat
       try {

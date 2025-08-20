@@ -41,7 +41,18 @@ class SensorLogRepository {
         timestamp: 'desc'
       },
       include: {
-        device: true
+        device: {
+          select : {
+            name : true,
+            code : true,
+            location : {
+              select : {
+                name : true,
+                currentStatus : true
+              }
+            }
+          },
+        }
       }
     });
   }
@@ -63,7 +74,7 @@ class SensorLogRepository {
 
   async findByDateRange(deviceCode, startDate, endDate) {
     // Jika tidak ada date range, return semua data untuk device
-    if (!startDate && !endDate) {
+    if (!startDate) {
       return null
     }
   
@@ -78,15 +89,17 @@ class SensorLogRepository {
       
       if (startDate) {
         // Konversi startDate ke awal hari
-        const start = new Date(startDate);
-        start.setUTCHours(0, 0, 0, 0);
+        const start = startDate;
+        console.log("awal hari : ", startDate)
+        start.setHours(0, 0, 0, 0);
         whereClause.timestamp.gte = start;
       }
       
       if (endDate) {
         // Konversi endDate ke akhir hari
-        const end = new Date(endDate);
-        end.setUTCHours(23, 59, 59, 999);
+        const end = endDate;
+        console.log("akhir : ",endDate)
+        end.setHours(23, 59, 59, 999);
         whereClause.timestamp.lte = end;
       }
     }

@@ -27,6 +27,7 @@
     "express": "^5.1.0",
     "helmet": "^8.1.0",
     "https": "^1.0.0",
+    "json2csv": "^6.0.0-alpha.2",
     "jsonwebtoken": "^9.0.2",
     "mqtt": "^5.12.1",
     "pino": "^9.7.0",

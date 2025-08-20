@@ -1,5 +1,7 @@
 import { sensorLogRepository } from '../repositories/sensorLog.repository.js';
 import logger from '../utils/logger.js';
+import weatherService from './weather.service.js';
+import { Parser } from "json2csv";
 
 class SensorLogService {
   async createSensorLog(data) {
@@ -14,13 +16,17 @@ class SensorLogService {
         throw new Error('At least one of rainfall or waterLevel must be provided');
       }
 
+      const weatherData = await weatherService.getWeather();
+      const rainValue = weatherData.rain ? weatherData.rain["1h"] || 0 : 0;
+
       // Prepare data
       const sensorData = {
         deviceCode: data.deviceCode,
         deviceCalibration : data.deviceCalibration,
         depth : data.depth,
         voltage : data.voltage,
-        rainfall: data.rainfall !== undefined ? parseFloat(data.rainfall) : null,
+        // rainfall: data.rainfall !== undefined ? parseFloat(data.rainfall) : null,
+        rainfall : rainValue,
         waterLevel: data.waterLevel !== undefined ? parseFloat(data.waterLevel) : null,
         timestamp: data.timestamp ? new Date(data.timestamp) : new Date()
       };
@@ -94,15 +100,22 @@ class SensorLogService {
 
   async getSensorLogsByDateRange(deviceCode, startDate, endDate) {
     try {
-      if (!deviceCode || !startDate || !endDate) {
-        throw new Error('Device ID, start date, and end date are required');
+      if (!deviceCode || !startDate) {
+        throw new Error('Device ID, start date are required');
       }
 
-      const start = new Date(startDate);
-      const end = new Date(endDate);
+      console.log("start : ", startDate)
+      console.log("end : ", endDate)
 
-      if (start > end) {
-        throw new Error('Start date cannot be later than end date');
+      const start = new Date(startDate);
+      let end = null;
+
+      if(endDate) {
+        end = new Date(endDate);
+
+        if (start > end) {
+          throw new Error('Start date cannot be later than end date');
+        }
       }
 
       logger.info(`Getting sensor logs for device ${deviceCode} from ${startDate} to ${endDate}`);
@@ -217,6 +230,55 @@ class SensorLogService {
       throw error;
     }
   }
+
+async exportData(deviceCode) {
+  try {
+      const result = await sensorLogRepository.findBydeviceCode(deviceCode);
+
+      if (!result.length) {
+          throw new Error("No data found to export");
+      }
+
+      const mapped = result.map(item => ({
+          id: item.id,
+          'device code': item.device?.code || "",
+          'device name': item.device?.name || "",
+          'location': item.device?.location?.name || "",
+          'status': item.device.location?.currentStatus || "",
+          waterlevel: item.waterLevel,
+          rainfall: item.rainfall,
+          calibration : item.deviceCalibration,
+          depth: item.depth,
+          depth: item.depth,
+          voltage: item.voltage,
+          timestamp: item.timestamp
+      }));
+
+      // Convert ke CSV
+      const json2csvParser = new Parser({
+          fields: [
+              "id",
+              "device code", 
+              "device name",
+              "location",
+              "status",
+              "waterlevel",
+              "rainfall",
+              "depth",
+              "voltage",
+              "timestamp"
+          ]
+      });
+      
+      const csv = json2csvParser.parse(mapped);
+      return csv;
+      
+  } catch (error) {
+      console.error(error);
+      throw error; // Throw error, jangan handle response di sini
+  }
+}
+
 }
 
 export const sensorLogService = new SensorLogService();

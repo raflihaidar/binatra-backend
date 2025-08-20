@@ -109,8 +109,6 @@ class DeviceController {
       }
   
       const device = await deviceService.findByCode(code);
-
-      console.log("device yang ditemukan : ", device)
   
       return res.status(200).json({
         success: true,

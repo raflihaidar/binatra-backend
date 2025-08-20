@@ -41,19 +41,8 @@ class DeviceMonitoringService {
    */
   async handleHeartbeat(deviceCode, heartbeatData = {}) {
     try {
-      // Ensure device exists (auto-create if needed)
-      await deviceService.ensureDeviceExists({
-        code: deviceCode,
-        description: heartbeatData.description,
-        location: heartbeatData.location
-      });
-
-      // Update heartbeat
       const device = await deviceService.updateHeartbeat(deviceCode, new Date());
       
-      logger.debug(`Heartbeat received from device: ${deviceCode}`);
-      
-      // Emit device status change via Socket.IO
       this.emitDeviceStatusChange(device, 'heartbeat');
       
       return device;

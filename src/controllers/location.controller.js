@@ -8,12 +8,19 @@ class LocationController {
  */
   async getAllLocations(req, res) {
     try {
-      const locations = await locationService.getAllLocations();
+      const page = parseInt(req.query.page) || 1;
+      const limit = parseInt(req.query.limit) || 10;
+      const status = req.query.status || null;
+      const search = req.query.search || null;
+      const sortBy = req.query.sortBy || null;
+      const sortOrder = req.query.sortOrder || null;
+
+      const locations = await locationService.getAllLocations({ page, limit, status, search, sortBy, sortOrder });
 
       return res.status(200).json({
         success: true,
         message: 'Locations retrieved successfully',
-        data: locations
+        ...locations
       });
     } catch (error) {
       logger.error('Error getting locations:', error);

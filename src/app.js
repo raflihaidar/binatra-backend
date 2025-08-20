@@ -201,7 +201,7 @@ const gracefulShutdown = (signal) => {
     console.error('Could not close connections in time, forcefully shutting down')
     // logger.error('Forced shutdown due to timeout')
     process.exit(1)
-  }, 10000) // 10 seconds timeout
+  }, 1000) // 10 seconds timeout
 }
 
 // Handle different shutdown signals

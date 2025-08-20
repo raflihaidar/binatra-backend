@@ -6,9 +6,9 @@ class LocationService {
    * Get all locations
    * @returns {Promise<Array>} List of locations
    */
-  async getAllLocations() {
+  async getAllLocations(options = {}) {
     try {
-      return await locationRepository.findAll();
+      return await locationRepository.findAll(options);
     } catch (error) {
       logger.error("Error in getAllLocations service:", error);
       throw error;

@@ -237,6 +237,33 @@ class SensorLogController {
       });
     }
   }
+
+  // Service function - hanya return data atau throw error
+
+// Controller function
+exportCSV = async (req, res) => {
+  try {
+      const { deviceCode } = req.params;
+      
+      const csvData = await sensorLogService.exportData(deviceCode);
+      
+      // Set headers yang benar untuk file download
+      res.setHeader('Content-Type', 'text/csv');
+      res.setHeader('Content-Disposition', 'attachment; filename="sensorLog.csv"');
+      
+      // Kirim CSV data
+      res.send(csvData);
+      
+  } catch (error) {
+      console.error(error);
+      
+      if (error.message === "No data found to export") {
+          res.status(404).send("No data found to export");
+      } else {
+          res.status(500).send("Failed to export CSV");
+      }
+  }
+}
 }
 
 export const sensorLogController = new SensorLogController();

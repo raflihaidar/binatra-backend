@@ -76,7 +76,7 @@ model Device {
   description String? @db.Text
   locationId  Int     @unique
 
-  status      DeviceStatus @default(DISCONNECTED)
+  status      DeviceStatus @default(CONNECTED)
   calibration Float        @default(0)
   periode     Int          @default(60)
   lastSeen    DateTime?
@@ -92,6 +92,7 @@ model Device {
   @@index([status])
   @@index([lastSeen])
   @@index([locationId])
+  @@unique([code, locationId])
   @@map("devices")
 }
 
