@@ -68,25 +68,6 @@ class LocationService {
    */
   async updateLocation(id, data) {
     try {
-      // Check for duplicate if updating unique fields
-      if (
-        data.name ||
-        data.city ||
-        data.district ||
-        data.latitude ||
-        data.longitude
-      ) {
-        const existingLocation = await locationRepository.findByUniqueData(
-          data
-        );
-
-        if (existingLocation && existingLocation.id !== id) {
-          const error = new Error("Location with this data already exists");
-          error.code = "LOCATION_EXISTS";
-          error.statusCode = 409;
-          throw error;
-        }
-      }
 
       const newLocatinData = await locationRepository.update(parseInt(id), data);
 

@@ -17,8 +17,7 @@ class LocationRepository {
 
       const { status, search, sortBy, sortOrder } = options;
 
-      const where = {
-      };
+      const where = {};
 
       if (status) {
         where.currentStatus = status;
@@ -27,17 +26,16 @@ class LocationRepository {
       if (search) {
         where.OR = [
           { name: { contains: search } },
-          { 
+          {
             device: {
               OR: [
                 { name: { contains: search } },
-                { code: { contains: search } }
-              ]
-            }
+                { code: { contains: search } },
+              ],
+            },
           },
         ];
       }
-      
 
       // Sorting
       const orderBy = {};
@@ -60,20 +58,20 @@ class LocationRepository {
               select: {
                 id: true,
                 name: true,
-              }
-            }
+              },
+            },
           },
-          orderBy
+          orderBy,
         }),
-        prisma.location.count({ where })
+        prisma.location.count({ where }),
       ]);
-  
+
       return {
         page,
         limit,
-        totalItems : total,
+        totalItems: total,
         totalPages: Math.ceil(total / limit),
-        data: locations
+        data: locations,
       };
     } catch (error) {
       logger.error("Error finding all locations:", error);
@@ -119,9 +117,38 @@ class LocationRepository {
    */
   async update(id, data) {
     try {
+      const {
+        name,
+        address,
+        district,
+        city,
+        province,
+        latitude,
+        longitude,
+        amanMax,
+        waspadaMin,
+        waspadaMax,
+        siagaMin,
+        siagaMax,
+        bahayaMin,
+      } = data;
       return await prisma.location.update({
         where: { id },
-        data,
+        data: {
+          name,
+          address,
+          district,
+          city,
+          province,
+          latitude,
+          longitude,
+          amanMax,
+          waspadaMin,
+          waspadaMax,
+          siagaMin,
+          siagaMax,
+          bahayaMin
+        },
         include: {
           device: true,
           statusHistory: {
