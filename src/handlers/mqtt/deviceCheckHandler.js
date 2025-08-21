@@ -67,11 +67,9 @@ export class DeviceCheckHandler {
         locationId : device.locationId
       })
     
-      this.notificationEmitter.emitToAll('device-check-result', {
-        deviceCode: checkDeviceCode,
+      this.notificationEmitter.emitToAll('device_status_changed', {
         device: device,
-        isNewDevice,
-        timestamp: timestamp.toISOString()
+        status : 'CONNECTED'
       });
 
       this.mqttClient.publish(`binatra-device/${device.code}/settings`, configResponse, {qos : 1} )

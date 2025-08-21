@@ -82,7 +82,7 @@ class DeviceMonitoringService {
    */
   emitDeviceStatusChange(device, reason = 'unknown') {
     const statusData = {
-      deviceCode: device.code,
+      device,
       status: device.status,
       lastSeen: device.lastSeen,
       timestamp: new Date().toISOString(),

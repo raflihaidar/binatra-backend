@@ -90,7 +90,6 @@ class SensorLogRepository {
       if (startDate) {
         // Konversi startDate ke awal hari
         const start = startDate;
-        console.log("awal hari : ", startDate)
         start.setHours(0, 0, 0, 0);
         whereClause.timestamp.gte = start;
       }
@@ -98,7 +97,6 @@ class SensorLogRepository {
       if (endDate) {
         // Konversi endDate ke akhir hari
         const end = endDate;
-        console.log("akhir : ",endDate)
         end.setHours(23, 59, 59, 999);
         whereClause.timestamp.lte = end;
       }
@@ -109,11 +107,19 @@ class SensorLogRepository {
       orderBy: {
         timestamp: 'desc'
       },
-      select: {
-        id: true, 
-        rainfall: true,
-        waterLevel: true,
-        timestamp: true
+      include: {
+        device: {
+          select : {
+            name : true,
+            code : true,
+            location : {
+              select : {
+                name : true,
+                currentStatus : true
+              }
+            }
+          },
+        }
       }
     });
   }

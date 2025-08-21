@@ -1,82 +1,94 @@
-import { sensorLogService } from '../services/sensorLog.service.js';
-import logger from '../utils/logger.js';
+import { sensorLogService } from "../services/sensorLog.service.js";
+import logger from "../utils/logger.js";
 
 class SensorLogController {
   getSensorLogs = async (req, res) => {
     try {
       const { deviceCode } = req.params;
-      
-      const sensorLogs = await sensorLogService.getSensorLogsByDevice(deviceCode);
+
+      const sensorLogs = await sensorLogService.getSensorLogsByDevice(
+        deviceCode
+      );
       return res.status(200).json({
         message: "Sensor logs retrieved successfully",
         data: sensorLogs,
-        total: sensorLogs.length
+        total: sensorLogs.length,
       });
     } catch (error) {
-      logger.error('Error getting sensor logs:', error);
-      return res.status(500).json({ 
-        message: 'Failed to get sensor logs',
-        error: error.message 
+      logger.error("Error getting sensor logs:", error);
+      return res.status(500).json({
+        message: "Failed to get sensor logs",
+        error: error.message,
       });
     }
-  }
+  };
 
   createSensorLog = async (req, res) => {
     try {
-      const {deviceCode, deviceCalibration, depth, voltage, rainfall, waterLevel} = req.body
+      const {
+        deviceCode,
+        deviceCalibration,
+        depth,
+        voltage,
+        rainfall,
+        waterLevel,
+      } = req.body;
 
-      if(!deviceCode){
-        return res.status(400).json({ 
+      if (!deviceCode) {
+        return res.status(400).json({
           success: false,
-          message: 'Device code is required' 
+          message: "Device code is required",
         });
       }
 
       const sensorLog = await sensorLogService.createSensorLog({
         deviceCode,
-        deviceCalibration, 
-        depth, 
+        deviceCalibration,
+        depth,
         voltage,
-        rainfall, 
-        waterLevel
+        rainfall,
+        waterLevel,
       });
 
       res.status(201).json({
         message: "Sensor log created successfully",
-        data: sensorLog
+        data: sensorLog,
       });
     } catch (error) {
-      logger.error('Create sensor log error:', error);
+      logger.error("Create sensor log error:", error);
       res.status(400).json({
         message: "Failed to create sensor log",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
   getLatestSensorLogs = async (req, res) => {
     try {
       const { deviceCode } = req.params;
       const { limit = 10 } = req.query;
 
-      const sensorLogs = await sensorLogService.getLatestSensorLogs(deviceCode, limit);
+      const sensorLogs = await sensorLogService.getLatestSensorLogs(
+        deviceCode,
+        limit
+      );
 
       res.status(200).json({
         message: "Latest sensor logs retrieved successfully",
         data: sensorLogs,
         pagination: {
           total: sensorLogs.length,
-          limit: parseInt(limit)
-        }
+          limit: parseInt(limit),
+        },
       });
     } catch (error) {
-      logger.error('Get latest sensor logs error:', error);
+      logger.error("Get latest sensor logs error:", error);
       res.status(500).json({
         message: "Failed to retrieve sensor logs",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
   getSensorLogsByDateRange = async (req, res) => {
     try {
@@ -95,17 +107,17 @@ class SensorLogController {
         total: sensorLogs.length,
         dateRange: {
           startDate,
-          endDate
-        }
+          endDate,
+        },
       });
     } catch (error) {
-      logger.error('Get sensor logs by date range error:', error);
+      logger.error("Get sensor logs by date range error:", error);
       res.status(500).json({
         message: "Failed to retrieve sensor logs",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
   getSensorLogStatistics = async (req, res) => {
     try {
@@ -123,17 +135,17 @@ class SensorLogController {
         data: statistics,
         dateRange: {
           startDate,
-          endDate
-        }
+          endDate,
+        },
       });
     } catch (error) {
-      logger.error('Get statistics error:', error);
+      logger.error("Get statistics error:", error);
       res.status(500).json({
         message: "Failed to retrieve statistics",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
   getLatestReading = async (req, res) => {
     try {
@@ -143,22 +155,22 @@ class SensorLogController {
 
       if (!latestReading) {
         return res.status(404).json({
-          message: "No sensor readings found for this device"
+          message: "No sensor readings found for this device",
         });
       }
 
       res.status(200).json({
         message: "Latest reading retrieved successfully",
-        data: latestReading
+        data: latestReading,
       });
     } catch (error) {
-      logger.error('Get latest reading error:', error);
+      logger.error("Get latest reading error:", error);
       res.status(500).json({
         message: "Failed to retrieve latest reading",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
   createMultipleSensorLogs = async (req, res) => {
     try {
@@ -170,36 +182,39 @@ class SensorLogController {
         message: "Multiple sensor logs created successfully",
         data: {
           count: result.count,
-          created: result.count
-        }
+          created: result.count,
+        },
       });
     } catch (error) {
-      logger.error('Create multiple sensor logs error:', error);
+      logger.error("Create multiple sensor logs error:", error);
       res.status(500).json({
         message: "Failed to create multiple sensor logs",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
   updateSensorLog = async (req, res) => {
     try {
       const { id } = req.params;
 
-      const updatedSensorLog = await sensorLogService.updateSensorLog(id, req.body);
+      const updatedSensorLog = await sensorLogService.updateSensorLog(
+        id,
+        req.body
+      );
 
       res.status(200).json({
         message: "Sensor log updated successfully",
-        data: updatedSensorLog
+        data: updatedSensorLog,
       });
     } catch (error) {
-      logger.error('Update sensor log error:', error);
+      logger.error("Update sensor log error:", error);
       res.status(500).json({
         message: "Failed to update sensor log",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
   deleteSensorLog = async (req, res) => {
     try {
@@ -208,62 +223,78 @@ class SensorLogController {
       await sensorLogService.deleteSensorLog(id);
 
       res.status(200).json({
-        message: "Sensor log deleted successfully"
+        message: "Sensor log deleted successfully",
       });
     } catch (error) {
-      logger.error('Delete sensor log error:', error);
+      logger.error("Delete sensor log error:", error);
       res.status(500).json({
         message: "Failed to delete sensor log",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
   deleteSensorLogsByDevice = async (req, res) => {
     try {
       const { deviceCode } = req.params;
 
-      const result = await sensorLogService.deleteSensorLogsByDevice(deviceCode);
+      const result = await sensorLogService.deleteSensorLogsByDevice(
+        deviceCode
+      );
 
       res.status(200).json({
         message: "All sensor logs for device deleted successfully",
-        deletedCount: result.count
+        deletedCount: result.count,
       });
     } catch (error) {
-      logger.error('Delete sensor logs by device error:', error);
+      logger.error("Delete sensor logs by device error:", error);
       res.status(500).json({
         message: "Failed to delete sensor logs",
-        error: error.message
+        error: error.message,
       });
     }
-  }
+  };
 
-  // Service function - hanya return data atau throw error
-
-// Controller function
-exportCSV = async (req, res) => {
-  try {
+  exportCSV = async (req, res) => {
+    try {
       const { deviceCode } = req.params;
-      
-      const csvData = await sensorLogService.exportData(deviceCode);
-      
-      // Set headers yang benar untuk file download
-      res.setHeader('Content-Type', 'text/csv');
-      res.setHeader('Content-Disposition', 'attachment; filename="sensorLog.csv"');
-      
-      // Kirim CSV data
+      const { startDate, endDate } = req.query;
+  
+      if (!deviceCode) {
+        return res.status(400).json({
+          error: "Device code is required",
+        });
+      }
+  
+      const csvData = await sensorLogService.exportData(deviceCode, startDate, endDate);
+
+  
+      // Set headers
+      res.setHeader("Content-Type", "text/csv; charset=utf-8");
+
       res.send(csvData);
       
-  } catch (error) {
-      console.error(error);
-      
+    } catch (error) {
+      console.error("Export CSV Error:", error);
+  
       if (error.message === "No data found to export") {
-          res.status(404).send("No data found to export");
+        res.status(404).json({
+          error: "No data found to export",
+          message: "No sensor log data found for the specified device and date range",
+        });
+      } else if (error.message.includes("Invalid") && error.message.includes("date")) {
+        res.status(400).json({
+          error: "Invalid date format",
+          message: "Please provide dates in valid format (YYYY-MM-DD or ISO string)",
+        });
       } else {
-          res.status(500).send("Failed to export CSV");
+        res.status(500).json({
+          error: "Failed to export CSV",
+          message: "Internal server error occurred while exporting data",
+        });
       }
-  }
-}
+    }
+  };
 }
 
 export const sensorLogController = new SensorLogController();
