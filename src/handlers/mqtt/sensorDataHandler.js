@@ -58,7 +58,7 @@ export class SensorDataHandler {
       if (waterLevel !== null) {
         locationResult = await this.processLocationStatus(
           sensorDeviceCode,
-          waterLevel,
+          depth,
           rainfall || 0,
           timestamp
         );
@@ -116,11 +116,11 @@ export class SensorDataHandler {
     }
   }
 
-  async processLocationStatus(deviceCode, waterLevel, rainfall, timestamp) {
+  async processLocationStatus(deviceCode, depth, rainfall, timestamp) {
     try {
       const locationResult = await locationController.processSensorData(
         deviceCode,
-        waterLevel,
+        depth,
         rainfall
       );
 
@@ -128,7 +128,7 @@ export class SensorDataHandler {
         await this.handleLocationStatusChange(
           locationResult,
           deviceCode,
-          waterLevel,
+          depth,
           rainfall,
           timestamp
         );
