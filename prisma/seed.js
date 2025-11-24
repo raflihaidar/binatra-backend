@@ -89,7 +89,7 @@ async function main() {
           depth: levelAir,
           deviceCalibration: TANK_HEIGHT,
           voltage: row.voltage,
-          createdAt: row.createdAt,
+          timestamp : row.timestamp
         }
       });
 
