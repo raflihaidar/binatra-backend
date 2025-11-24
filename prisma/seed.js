@@ -11,7 +11,7 @@ async function main() {
   // Ambil semua data dari device 1
   const device1Data = await prisma.sensorLog.findMany({
     where: { deviceCode: '68D08' },
-    orderBy: { timestamp: "asc" }, // urut ascending
+    orderBy: { timestamp: "asc" },
   });
 
   console.log(`Found ${device1Data.length} records from device 68D08.`);
@@ -20,7 +20,6 @@ async function main() {
     // Ambil timestamp terakhir dari device1Data
     const lastTimestamp = device1Data[device1Data.length - 1].timestamp;
 
-    // 1️⃣ Buat Location baru
     const location = await prisma.location.create({
       data: {
         name: "Sungai Pak Nur",
@@ -42,7 +41,6 @@ async function main() {
       }
     });
 
-    // 2️⃣ Buat Device baru terkait location
     const device2 = await prisma.device.create({
       data: {
         code: '68D05',
@@ -56,31 +54,23 @@ async function main() {
       }
     });
 
-    // 3️⃣ Loop semua data device1Data
-    let prevStatus = 'AMAN'; // status awal
+    let prevStatus = 'AMAN';
     for (const row of device1Data) {
 
       // Hitung rawValue dummy
-      let rawValue = row.waterLevel + 20;
+      let rawValue = row.waterLevel - 10.000;
       rawValue = Math.floor(rawValue * 1000) / 1000;
 
-      // Hitung level air berdasarkan offset tank
       let levelAir = TANK_HEIGHT - rawValue;
       levelAir =  Math.floor(levelAir * 1000) / 1000;
 
-      // Tentukan status baru berdasarkan threshold location
       let newStatus = 'AMAN';
-      if (levelAir <= location.amanMax) {
-        newStatus = 'AMAN';
-      } else if (levelAir >= location.waspadaMin && levelAir <= location.waspadaMax) {
-        newStatus = 'WASPADA';
-      } else if (levelAir >= location.siagaMin && levelAir <= location.siagaMax) {
-        newStatus = 'SIAGA';
-      } else if (levelAir >= location.bahayaMin) {
-        newStatus = 'BAHAYA';
-      }
 
-      // 4️⃣ Simpan sensorLog untuk device baru
+      if (levelAir <= location.amanMax) newStatus = 'AMAN';
+      else if (levelAir >= location.waspadaMin && levelAir <= location.waspadaMax) newStatus = 'WASPADA';
+      else if (levelAir >= location.siagaMin && levelAir <= location.siagaMax) newStatus = 'SIAGA';
+      else if (levelAir >= location.bahayaMin) newStatus = 'BAHAYA';
+
       await prisma.sensorLog.create({
         data: {
           waterLevel: rawValue,
@@ -93,7 +83,6 @@ async function main() {
         }
       });
 
-      // 5️⃣ Simpan locationStatusHistory
       await prisma.locationStatusHistory.create({
         data: {
           locationId: location.id,
@@ -104,7 +93,6 @@ async function main() {
         }
       });
 
-      // Update prevStatus untuk iterasi berikutnya
       prevStatus = newStatus;
     }
 
