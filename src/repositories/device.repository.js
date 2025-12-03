@@ -345,12 +345,17 @@ async findAll(options = {}) {
       return await prisma.device.findMany({
         where: {
           AND: [
-            { status: 'CONNECTED' },
+            { status: "CONNECTED" },      
             {
               OR: [
                 { lastSeen: { lt: thresholdTime } },
                 { lastSeen: null }
               ]
+            },      
+            {
+              NOT: {
+                deviceCode: "68D05"
+              }
             }
           ]
         },
@@ -360,6 +365,7 @@ async findAll(options = {}) {
           }
         }
       });
+      
     } catch (error) {
       logger.error(`Error finding potentially offline devices: ${error.message}`, error);
       throw error;

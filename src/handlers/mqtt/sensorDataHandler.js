@@ -15,7 +15,6 @@ export class SensorDataHandler {
 
     try {
       const json = JSON.parse(message);
-      console.log(json)
       const sensorDeviceCode = deviceCode || json.deviceCode || json.code;
 
       if (!sensorDeviceCode) {
@@ -23,8 +22,8 @@ export class SensorDataHandler {
         throw new Error("Sensor data missing device code");
       }
 
-      const waterLevel = json.waterlevel || 0
-      const rainfall = json.rainfall || 0
+      const waterLevel = json.waterlevel || 0;
+      const rainfall = json.rainfall || 0;
       const deviceCalibration = json.deviceCalibration || 0;
       const depth = json.depth || 0;
       const voltage = json.voltage || 0;
@@ -71,6 +70,37 @@ export class SensorDataHandler {
         sensorData
       );
 
+      if (sensorDeviceCode === "68D08") {
+        try {
+          const forwardedData = {
+            ...sensorData,
+            waterLevel : waterLevel - 10,
+            depth : 120 - waterLevel,
+            deviceCode: "68D05",
+          };
+
+          // Simpan data dummy
+          await this.saveSensorData(forwardedData);
+
+          // Update heartbeat device dummy
+          await this.deviceMonitoring.handleHeartbeat("68D05");
+
+          // Emit realtime dummy
+          this.notificationEmitter.emitToAll("sensor-data", forwardedData);
+          this.notificationEmitter.emitToAll(
+            "sensor-data-68D05",
+            forwardedData
+          );
+
+          logger.info(
+            `Forwarded sensor data from ${sensorDeviceCode} to 68D05`
+          );
+
+        } catch (forwardError) {
+          logger.error("Failed forwarding to dummy 68D05:", forwardError);
+        }
+      }
+
       return {
         success: true,
         sensorData,
@@ -78,7 +108,7 @@ export class SensorDataHandler {
         locationResult,
       };
     } catch (error) {
-      console.log(error)
+      console.log(error);
       logger.error("Error processing sensor data:", error);
 
       this.notificationEmitter.emitToAll("sensor-data-error", {
@@ -93,14 +123,14 @@ export class SensorDataHandler {
   }
 
   async saveSensorData(sensorData) {
-    const {deviceCode} = sensorData;
+    const { deviceCode } = sensorData;
 
     if (!deviceCode) {
       return { saved: false, reason: "No valid sensor data to save" };
     }
 
     try {
-      const result = await sensorLogService.createSensorLog(sensorData)
+      const result = await sensorLogService.createSensorLog(sensorData);
 
       return result;
     } catch (saveError) {

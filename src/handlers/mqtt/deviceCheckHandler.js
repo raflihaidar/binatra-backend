@@ -16,6 +16,7 @@ export class DeviceCheckHandler {
       const json = JSON.parse(message);
       const checkDeviceCode = json.deviceCode;
 
+
       if (!checkDeviceCode) {
         const error = 'Device code not provided';
         logger.error('Device check failed: device code not provided in message');

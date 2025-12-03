@@ -194,9 +194,7 @@ class DeviceService {
     try {
       const potentiallyOfflineDevices = await deviceRepository.findPotentiallyOfflineDevices(timeoutMinutes);
 
-      const offlineDeviceCodes = potentiallyOfflineDevices.map(
-        (device) => device.code
-      );
+      const offlineDeviceCodes = potentiallyOfflineDevices.map((device) => device.code);
 
       if (offlineDeviceCodes.length > 0) {
         await deviceRepository.bulkUpdateStatusToDisconnected(
