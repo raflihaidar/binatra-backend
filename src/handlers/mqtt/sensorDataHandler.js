@@ -74,7 +74,7 @@ export class SensorDataHandler {
         try {
           const forwardedData = {
             ...sensorData,
-            waterLevel : waterLevel - 10,
+            waterLevel : waterLevel,
             depth : 120 - waterLevel,
             deviceCode: "68D05",
           };
