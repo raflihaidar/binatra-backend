@@ -354,7 +354,7 @@ async findAll(options = {}) {
             },      
             {
               NOT: {
-                deviceCode: "68D05"
+                code: "68D05"
               }
             }
           ]

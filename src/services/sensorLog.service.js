@@ -27,7 +27,6 @@ class SensorLogService {
         deviceCalibration: data.deviceCalibration,
         depth: data.depth,
         voltage: data.voltage,
-        // rainfall: data.rainfall !== undefined ? parseFloat(data.rainfall) : null,
         rainfall: rainValue,
         waterLevel:
           data.waterLevel !== undefined ? parseFloat(data.waterLevel) : null,
