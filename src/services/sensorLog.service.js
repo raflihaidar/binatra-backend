@@ -116,7 +116,7 @@ class SensorLogService {
     }
   }
 
-  async getSensorLogsByDateRange(deviceCode, startDate, endDate) {
+  async getSensorLogsByDateRange(deviceCode, startDate, endDate = startDate) {
     try {
       if (!deviceCode || !startDate) {
         throw new Error("Device ID, start date are required");

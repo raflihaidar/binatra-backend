@@ -13,6 +13,7 @@ import { router as weather_routes } from './routes/weather.route.js'
 import { router as device_routes } from './routes/device.route.js'
 import { router as sensorLog_routes } from './routes/sensorLog.route.js'
 import { router as location_routes } from './routes/location.route.js'
+import {router as prediciton_routes} from './routes/prediction.route.js'
 import { DeviceMonitoringService } from './services/deviceMonitoring.service.js'
 import { MqttMessageRouter } from './routes/mqtt.route.js'
 import { NotificationEmitter } from './services/notificationEmitter.service.js'
@@ -47,6 +48,7 @@ app.use('/api/v1/cuaca', weather_routes)
 app.use('/api/v1/devices', device_routes)
 app.use('/api/v1/sensorLogs', sensorLog_routes)
 app.use('/api/v1/locations', location_routes)
+app.use('/api/v1/prediction', prediciton_routes)
 
 // MQTT Connection Setup
 mqttClient.on('connect', () => {
