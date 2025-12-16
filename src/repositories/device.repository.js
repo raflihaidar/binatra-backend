@@ -341,7 +341,7 @@ async findAll(options = {}) {
     try {
       const thresholdTime = new Date();
       thresholdTime.setMinutes(thresholdTime.getMinutes() - thresholdMinutes);
-
+  
       return await prisma.device.findMany({
         where: {
           AND: [
@@ -354,7 +354,7 @@ async findAll(options = {}) {
             },      
             {
               NOT: {
-                code: "68D05"
+                code: { in: ["68D05", "68D08"] }  // kecualikan 68D05 dan 68D08
               }
             }
           ]
@@ -371,6 +371,7 @@ async findAll(options = {}) {
       throw error;
     }
   }
+  
 
   /**
    * Get device status summary (counts by status)
