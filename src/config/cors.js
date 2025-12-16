@@ -5,7 +5,8 @@ export const corsOptions = {
         'http://localhost:3000',  // Backend dev
         'http://127.0.0.1:5173',  // Alternative localhost
         'https://binatra.id',     // Production
-        'https://www.binatra.id'  // Production with www
+        'https://www.binatra.id',  // Production with www
+        "https://model.binatra.id/predict" //ML
       ]
       
       // Allow requests with no origin (Postman, mobile apps)
